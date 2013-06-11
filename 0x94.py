@@ -727,15 +727,21 @@ def optionsheader(url):
 	print "Allow Header alinirken hata oldu"
 
 def headerbilgi(host):
+    try:
 	urlac = urllib2.urlopen(host)
 	robots(host)
 	yaz("[#] Makina Bilgisi : "+host+" - "+str(urlac.info().getheader('Server')),True)
+    except:
+	print "Header bilgisi alinamadi"
 
 
 def robots(host):
-    urlac = urllib2.urlopen(host+"/robots.txt").read()
-    if "Disallow:" in urlac or "Allow:"  in urlac:
-	yaz("[ #] robots.txt dosyasi bulundu "+host+"/robots.txt",True)
+    try:
+	urlac = urllib2.urlopen(host+"/robots.txt").read()
+	if "Disallow:" in urlac or "Allow:"  in urlac:
+	    yaz("[ #] robots.txt dosyasi bulundu "+host+"/robots.txt",True)
+    except:
+	print "robots.txt kontrolu yapilamadi"
 
 def locationbypass(link):
     try:
@@ -776,12 +782,13 @@ def linkler(urltara):
 	for tag in soup.findAll('a', href=True):
 	    tag['href'] = urlparse.urljoin(urltara, tag['href'])
 	    asilurl=tag['href'].encode('utf-8').strip()
+	    print asilurl
 	    tamurl=locationbypass(asilurl)
 	    if aynivarmi(tamurl)==False:
 		if host in tamurl:
 		    aynilinkler[tamurl]="bekir"
 		    print tamurl
-		    #headerinjection(tamurl)
+		    headerinjection(tamurl)
 		    if "javascript" not in tamurl:
 			if "php?" in tamurl:
 			    lfitest(tamurl)
