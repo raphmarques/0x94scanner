@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # 0x94 Scanner"
-#(POST/GET/BLIND/TIME BASED/HEADER/SQL SCAN) -LFI-XSS SCAN"
+#Multi Thread(POST/GET/BLIND/TIME BASED/HEADER/SQL SCAN) -LFI-XSS SCAN"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
 #Sitedeki tum linkleri alir
@@ -29,9 +29,14 @@ import httplib
 from string import maketrans
 import base64
 import socket
+import Queue
+import threading
+from time import sleep
+
 
 #cookie ayarlamak istiyorsan buraya gir
-sayfacookie=""
+sayfacookie="lalala"
+queue = Queue.Queue()
 
 from BeautifulSoup import BeautifulSoup
 
@@ -51,7 +56,6 @@ class HTTPAYAR(urllib2.HTTPRedirectHandler):
 opener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
 opener.addheaders = [
         ('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
-        ('Referer', 'http://www.google.com'),
         ("Cookie", sayfacookie)]
 
 urllib2.install_opener(opener)
@@ -94,7 +98,10 @@ def formyaz(formurl):
 				if post_input['type'].lower() == 'text' or post_input['type'].lower() == 'password' or   post_input['type'].lower() == 'hidden' or post_input['type'].lower() == 'radio':  
 					if post_input.has_key('id'):  
 						print post_input['id']
-						toplamveri[post_input['id']]="bekir"
+						if post_input.has_key('value'):
+						    toplamveri[post_input['id']]=post_input['value']
+						else:
+						    toplamveri[post_input['id']]="bekir"
 					elif post_input.has_key('name'):
 					    print post_input['name']
 					    if post_input.has_key('value'):
@@ -121,6 +128,10 @@ def formyaz(formurl):
 			    if get_input['type'].lower() == 'text' or get_input['type'].lower() == 'password' or get_input['type'].lower() == 'hidden' or get_input['type'].lower() == 'radio':  
 				    if get_input.has_key('id'):  
 					    print get_input['id']
+					    if post_input.has_key('value'):
+						toplamveri[post_input['id']]=post_input['value']
+					    else:
+						toplamveri[post_input['id']]="bekir"					    
 					    toplamveri[post_input['id']]="bekir"
 				    elif get_input.has_key('name'):
 					    print get_input['name']
@@ -148,7 +159,7 @@ def cookieinjection(url,cookie):
 	
     except urllib2.HTTPError,  e:
 	    if(e.code==500):
-		yaz("Http 500 Dondu  / Internal Server Error" +url,True)
+		yaz("[#] Cookie Injection Http 500 Dondu  / Internal Server Error \n "+cookie.replace("=","'=")+"\n" +url,True)
 		
     except urllib2.URLError,  e:
 	if "Time" in e.reason:
@@ -175,7 +186,7 @@ def headerinjection(url):
 	
     except urllib2.HTTPError,  e:
 	    if(e.code==500):
-		yaz("Http 500 Dondu  / Internal Server Error" +url,True)
+		yaz("[#] Header Injection Http 500 Dondu  / Internal Server Error " +url,True)
 		
     except urllib2.URLError,  e:
 	if "Time" in e.reason:
@@ -214,10 +225,10 @@ def timebased(url):
 		
 	except urllib2.HTTPError,  e:
 	    if(e.code==500):
-		yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+		yaz("[#] Timebased Injection Http 500 Dondu  Internal Server Error "+timeler+" \n" +urlnormal,True)
 		
 	except socket.timeout:
-	    yaz("Time BASED SQL Olabilir Cok fazla bekledi",True)
+	    yaz("[#] Time BASED SQL Olabilir Cok fazla bekledi",True)
 	    
 	except urllib2.URLError,  e:
 	    if "Time" in e.reason:
@@ -248,7 +259,7 @@ def blindpost(url,params,method):
 	
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,False)
+	    yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error "+urlnormal+"\n Yollanan Data ="+parametresaf,True)
 	
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -260,6 +271,7 @@ def blindpost(url,params,method):
     
     
     post_string	=  [" 'aNd 1=1",
+                    "bekir' AND 'a'='a",
                     "' select dbms_xmlgen.getxml(‘select “a” from sys.dual’) from sys.dual;",
                     "' select+dbms_pipe.receive_message((chr(95)||chr(96)||chr(97))+from+dual)",
                     " SELECT CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)",
@@ -330,7 +342,7 @@ def blindpost(url,params,method):
 		    
 		except urllib2.HTTPError,  e:
 		    if(e.code==500):
-			yaz("Http 500 Dondu  / Internal Server Error" +url,True)
+			yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data = "+parametre+"\n"+url,True)
 		    
 		except urllib2.URLError,  e:
 		    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
@@ -367,7 +379,7 @@ def postget(url, params, method):
 	
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+	    yaz("POST "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data ="+parametre+ "\n"+urlnormal,True)
 	
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -481,7 +493,7 @@ def xsstest(xsstesturl):
 		  
     except urllib2.HTTPError,e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +xsstesturl,True)
+	    yaz("[#] XSS Http 500 Dondu  / Internal Server Error " +xsstesturl,True)
    
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,xsstesturl)
@@ -501,7 +513,7 @@ def xsstara(xssurl):
 		   
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+	    yaz("[#] XSS Http 500 Dondu  / Internal Server Error " +urlnormal,True)
     
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -570,7 +582,7 @@ def lfitara(lfibul):
 	       
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+	    yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +urlnormal,True)
     
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -593,7 +605,7 @@ def lfitest(lfiurl):
 	       
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+	    yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +urlnormal,True)
     
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -616,7 +628,7 @@ def sql(urlnormal):
 	
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+	    yaz("[#] SQL Http 500 Dondu  / Internal Server Error " +urlnormal,True)
 
     except urllib2.URLError,  e:
 	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
@@ -649,7 +661,7 @@ def blind(urlblind):
 	    
         except urllib2.HTTPError,e:
             if(e.code==500):
-		yaz("Http 500 Dondu  / Internal Server Error" +urlblind,True)
+		yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error " +urlblind+true_strings[i],True)
 	except urllib2.URLError,e:
 	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
 	    #yaz(mesaj)
@@ -671,7 +683,7 @@ def blind(urlblind):
 		
 	except urllib2.HTTPError,e:
             if(e.code==500):
-		yaz("Http 500 Dondu  / Internal Server Error" +urlnormal,True)
+		yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error" +urlblind+false_strings[i],True)
 	except urllib2.URLError,e:
 	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
 	    #yaz(mesaj)
@@ -734,12 +746,11 @@ def headerbilgi(host):
     except:
 	print "Header bilgisi alinamadi"
 
-
 def robots(host):
     try:
 	urlac = urllib2.urlopen(host+"/robots.txt").read()
 	if "Disallow:" in urlac or "Allow:"  in urlac:
-	    yaz("[ #] robots.txt dosyasi bulundu "+host+"/robots.txt",True)
+	    yaz("[#] robots.txt dosyasi bulundu "+host+"/robots.txt",True)
     except:
 	print "robots.txt kontrolu yapilamadi"
 
@@ -765,12 +776,43 @@ def locationbypass(link):
     except:
 	print "Location Alinirken Hata oldu"
 
+
+class Anaislem(threading.Thread):
+    def __init__(self, queues,lock):
+        threading.Thread.__init__(self)
+	self.queue = queue
+	self.lock  = lock
+	self.tamurl=""
+
+    def run(self):
+	while not self.queue.empty():
+	    try:
+		self.tamurl = self.queue.get()
+		formyaz(self.tamurl)
+		headerinjection(self.tamurl)
+		if "javascript" not in self.tamurl:
+		    if "php?" in self.tamurl:
+			lfitest(self.tamurl)
+			
+		    if "?" in self.tamurl:
+			sql(self.tamurl)
+			timebased(self.tamurl)
+			blind(self.tamurl)
+			xsstest(self.tamurl)  
+	    except:
+		print "site adresi alinirken hata oldu"
+		self.queue.task_done()
+		continue
+		
+
+
 def linkler(urltara):
     try:
+	dahildegil = ("ico","css","mailto:","tel:","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
+	
 	linkopener = YeniOpener()
 	linkopener.addheaders = [
 	    ('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
-	    ('Referer', 'http://www.google.com'),
 	    ("Cookie", sayfacookie)]
 	
 	page = linkopener.open(urltara)
@@ -778,36 +820,51 @@ def linkler(urltara):
 	text = page.read()
 	page.close()
 	soup = BeautifulSoup(text)
-    
-	for tag in soup.findAll('a', href=True):
+	
+	for ee in re.findall('''href=["'](.[^"']+)["']''', text, re.I):
+	    if "tel:+" not in ee or "mailto:" not in ee:
+		if ee.split('.')[-1].lower() not in dahildegil:	    
+		    birlesik=urlparse.urljoin(urltara, ee).replace("#","")
+		    if aynivarmi(birlesik)==False:
+			queue.put(birlesik)
+			aynilinkler[birlesik]="bekir"
+	    
+	
+	for tag in soup.findAll('a',href=True):
 	    tag['href'] = urlparse.urljoin(urltara, tag['href'])
 	    asilurl=tag['href'].encode('utf-8').strip()
-	    print asilurl
+	    tamurl=asilurl
 	    tamurl=locationbypass(asilurl)
 	    if aynivarmi(tamurl)==False:
 		if host in tamurl:
+		    queue.put(tamurl)
 		    aynilinkler[tamurl]="bekir"
-		    print tamurl
-		    headerinjection(tamurl)
-		    if "javascript" not in tamurl:
-			if "php?" in tamurl:
-			    lfitest(tamurl)
-			    
-			if "?" in tamurl:
-			    sql(tamurl)
-			    timebased(tamurl)
-			    blind(tamurl)
-			    xsstest(tamurl)
+		    
+	threads = []
+	lock    = threading.Lock()
+	for i in range(5):
+	    t = Anaislem(queue,lock)
+	    t.setDaemon(True)
+	    threads.append(t)
+	    t.start()
+	   
+	while any([x.isAlive() for x in threads]):
+	    sleep(0.1)
+
+	
 
     except:
 	print "Linkleri alirken hata olustu"
 
 def main():
     print "########################################"
-    print "#0x94 Scanner"
-    print "#by 0x94 a.k.a The_BeKiR"
-    print "#https://twitter.com/0x94"
+    print "#                                      #"
+    print "#           0x94 Scanner               #"  
+    print "#        by 0x94 a.k.a The_BeKiR       #" 
+    print "#        https://twitter.com/0x94      #"
+    print "#                                      #"
     print "########################################"
+    print ""
     if len(sys.argv) == 1:
         print "Kullanim: %s URL [URL]..." % sys.argv[0]
         sys.exit(1)
