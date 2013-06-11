@@ -1,8 +1,8 @@
 # 0x94 Scanner"
-#(POST/GET/BLIND/TIME BASED/HEADER/SQL SCAN) -LFI-XSS SCAN"
+#Multi Thread (POST/GET/BLIND/TIME BASED/HEADER/SQL SCAN) -LFI-XSS SCAN"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
-#Sitedeki tum linkleri alir
+#Sitedeki tum linkleri 2 farkli yontemle alir
 #seo ile yada 302 yonlendirmeli linklerin location urllerini otomatik alir
 #tum linklerde get ve post sql injection dener
 #tum linklerde blind get ve post sql injection dener
