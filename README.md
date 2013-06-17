@@ -1,4 +1,4 @@
-# 0x94 Scanner v1.0
+# 0x94 Scanner v1.0 [Python 2x]
 #Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
