@@ -220,7 +220,7 @@ def normalac(url):
     for ajx in ajaxtespit:
 	if ajx in temizle(response):
 	    yaz("[#] Ajax Tespit Edildi "+url,True)
-    if "<?" in response and "?>" in response:
+    if "<?" in response and "?>" in response and "<?xml" not in response:
 	yaz("[#] PHP kod tespit Edildi "+url,True)
     elif "<%" in response and "%>" in response:
 	yaz("[#] ASP kod tespit Edildi "+url,True)
