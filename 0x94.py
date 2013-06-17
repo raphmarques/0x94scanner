@@ -727,74 +727,74 @@ def comparePages(page1,page2,deurl,info):
 def sqlkontrol(response,urlnormal):
     print "SQL hata mesaji kontrol ediliyor"
     if re.search("Microsoft OLE DB Provider for SQL Server",response,re.DOTALL):
-	mesaj= "[#] %s MS-SQL Server error" %urlnormal
+	mesaj= "[#] %s MS-SQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("\[Microsoft\]\[ODBC Microsoft Access Driver\] Syntax error",response,re.DOTALL):
-	mesaj= "[#] %s MS-Access error"%urlnormal
+	mesaj= "[#] %s MS-Access error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Microsoft OLE DB Provider for ODBC Drivers.*\[Microsoft\]\[ODBC SQL Server Driver\]",response,re.DOTALL):
-	mesaj= "[#] %s MS-SQL Server error"%urlnormal
+	mesaj= "[#] %s MS-SQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Microsoft OLE DB Provider for ODBC Drivers.*\[Microsoft\]\[ODBC Access Driver\]",response,re.DOTALL):
-	mesaj= "[#] %s MS-Access error"%urlnormal
+	mesaj= "[#] %s MS-Access error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Microsoft JET Database Engine",response,re.DOTALL):
-	mesaj= "[#] %s MS Jet database engine error"%urlnormal
+	mesaj= "[#] %s MS Jet database engine error" % urlnormal
 	yaz(mesaj,True)
     if re.search("ADODB.Command.*error",response,re.DOTALL):
-	mesaj= "[#] %s ADODB Error"%urlnormal
+	mesaj= "[#] %s ADODB Error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Microsoft VBScript runtime",response,re.DOTALL):
-	mesaj= "[#] %s VBScript runtime error"%urlnormal
+	mesaj= "[#] %s VBScript runtime error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Type mismatch",response,re.DOTALL):
-	mesaj= "[#] %s VBScript / ASP error"%urlnormal
+	mesaj= "[#] %s VBScript / ASP error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Server Error.*System\.Data\.OleDb\.OleDbException",response,re.DOTALL):
-	mesaj= "[#] %s ASP .NET OLEDB Exception"%urlnormal
+	mesaj= "[#] %s ASP .NET OLEDB Exception" % urlnormal
 	yaz(mesaj,True)
     if re.search("Invalid SQL statement or JDBC",response,re.DOTALL):
-	mesaj= "[#] %s Apache Tomcat JDBC error"%urlnormal
+	mesaj= "[#] %s Apache Tomcat JDBC error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Warning: mysql_fetch_array",response,re.DOTALL):
-	mesaj= "[#] %s MySQL Server error"%urlnormal
+	mesaj= "[#] %s MySQL Server error" % urlnormal
 	yaz(mesaj,True)	
     if re.search("Warning.*supplied argument is not a valid MySQL result",response,re.DOTALL):
-	mesaj= "[#] %s MySQL Server error"%urlnormal
+	mesaj= "[#] %s MySQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("You have an error in your SQL syntax.*on line",response,re.DOTALL):
-	mesaj= "[#] %s MySQL Server error"%urlnormal
+	mesaj= "[#] %s MySQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("You have an error in your SQL syntax.*at line",response,re.DOTALL):
-	mesaj= "[#] %s MySQL Server error"%urlnormal
+	mesaj= "[#] %s MySQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Warning.*mysql_.*\(\)",response,re.DOTALL):
-	mesaj= "[#] %s MySQL Server error"%urlnormal
+	mesaj= "[#] %s MySQL Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("ORA-[0-9][0-9][0-9][0-9]",response,re.DOTALL):
-	mesaj= "[#] %s Oracle DB Server error"%urlnormal
+	mesaj= "[#] %s Oracle DB Server error" % urlnormal
 	yaz(mesaj,True)
     if re.search("DorisDuke error",response,re.DOTALL):
-	mesaj= "[#] %s DorisDuke error\n"%urlnormal
+	mesaj= "[#] %s DorisDuke error\n" % urlnormal
 	yaz(mesaj,True)
     if re.search("javax\.servlet\.ServletException",response,re.DOTALL):
-	mesaj= "[#] %s Java Servlet error"%urlnormal
+	mesaj= "[#] %s Java Servlet error" % urlnormal
 	yaz(mesaj,True)
     if re.search("org\.apache\.jasper\.JasperException",response,re.DOTALL):
-	mesaj= "[#] %s Apache Tomcat error"%urlnormal
+	mesaj= "[#] %s Apache Tomcat error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Warning.*failed to open stream",response,re.DOTALL):
-	mesaj= "[#] %s PHP error"%urlnormal
+	mesaj= "[#] %s PHP error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Fatal Error.*on line",response,re.DOTALL):
-	mesaj= "[#] %s PHP error"%urlnormal
+	mesaj= "[#] %s PHP error" % urlnormal
 	yaz(mesaj,True)
     if re.search("Fatal Error.*at line",response,re.DOTALL):
-	mesaj= "[#] %s PHP error"%urlnormal
+	mesaj= "[#] %s PHP error" % urlnormal
 	yaz(mesaj,True)
 	
     if re.search("Warning: mysql_num_rows():",response,re.DOTALL):
-	mesaj= "[#] %s MYSQL ERROR "%urlnormal
+	mesaj= "[#] %s MYSQL ERROR " % urlnormal
 	yaz(mesaj,True)
 
 
