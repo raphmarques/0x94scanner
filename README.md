@@ -15,6 +15,7 @@
 #ajax ile veri gonderimi olan dosyalari tespit eder
 #sitede gecen emailleri otomatik toplar
 #calismayan php ve asp kodlarini bulur
+#birden fazla request istegini engelleyen siteleri icin request limit ozelligi vardir.
 #bulunan sql aciklarinin yollanan verilerin true ve false deger ciktilarini /debug klasorune kaydeder.
 #butun sonuclari rapor.txt ye kaydeder
 #sadece guvenlik testleri icin kullanin
