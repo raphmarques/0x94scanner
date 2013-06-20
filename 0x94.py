@@ -319,9 +319,9 @@ def sqlkodcalisiomu(url):
 	for sep in bitiskarakter:
 	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
 		calishal={}
-		calishal[key]=calisankod+sep
+		calishal[key]=value+calisankod+sep
 	    calisparametre = urllib.urlencode(calishal)
-	    print "GET Command Injection Taraniyor ... "
+	    print "SQL Injection Testi Yapiliyor ... "
 	    urlac = urllib2.urlopen(url+"?"+calisparametre)
 	    response = urlac.read()
 	    if "0x94xxx!!!" in response:
@@ -1941,6 +1941,7 @@ class Anaislem(threading.Thread):
 		headerinjection(self.tamurl)
 		if "?" in self.tamurl:
 		    y=1
+		    sqlkodcalisiomu(self.tamurl)
 		    lfitest(self.tamurl)
 		    headercrlf(self.tamurl)
 		    getcommandinj(self.tamurl)
