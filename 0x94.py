@@ -134,10 +134,15 @@ def headercrlf(link):
 		
 	    
 	    if "<title>Google</title>" in crlfresponsek or \
-	    "0x94scanner" in crlfresponsek or \
 	    "0x94Scannercookie" in hinfo or \
 	    "0x94Scannerheader" in hinfo:
 		yaz("[#] CRLF Injection Bulundu " + crlflink,True)
+		
+	    elif "0x94scanner" in crlfresponsek and \
+	         "Content-Type:" not in crlfresponsek:
+		yaz("[#] GET CRLF Injection Bulundu " + crlflink,True)
+		
+		
 	       
 
 
@@ -1965,7 +1970,7 @@ def temizle(source):
 
 def kaydet(link,host):
     try:
-	dahildegil = ("xlsx","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
+	dahildegil = ("pkg","xlsx","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
 		
 	linkopener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
 	linkopener.addheaders = [
@@ -1987,14 +1992,14 @@ def kaydet(link,host):
 	
 	
 	for ee in re.findall('''img src=["'](.[^"']+)["']''', text, re.I):
-	    if ".php" in ee:
+	    if ".php" in ee or ".asp" in ee:
 		birlesik=urlparse.urljoin(dongululink, ee).replace("#","")
 		if aynivarmi(birlesik)==False:
 		    if host in birlesik:
 			tamurl2=locationbypass(birlesik)
 			limiti=ZiyaretSayisi(tamurl2)
 			if limiti==False:
-			    yaz("[#] Resim URL sinde PHP Adres Tespit edildi " +dongululink+"\n Resim Link = " +tamurl2 ,True)
+			    yaz("[#] Resim URL sinde PHP/ASP Adres Tespit edildi " +dongululink+"\n Resim Link = " +tamurl2 ,True)
 			    analistem.append(tamurl2)
 			    aynilinkler[tamurl2]="bekir"
 			
@@ -2045,7 +2050,7 @@ def kaydet(link,host):
 		
 		
 	for tag in soup.findAll('a'):
-		if "php?" in tag["href"]:
+		if ".php" in tag["href"] or ".asp" in tag["href"]:
 		    tag['href'] = urlparse.urljoin(dongululink, tag['href'])
 		    asilurl=tag['href'].encode('utf-8').strip()
 		    if aynivarmi(asilurl)==False:
