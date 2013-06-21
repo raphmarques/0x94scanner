@@ -14,6 +14,9 @@
 #tum linklerde php ve asp lfi dener
 #tum linklerde header crlf injection dener
 #tum linklerde login sayfalarini otomatik bulup basit capli brute gerceklestirir.
+#linklerde olan joomlalari bulup joomla token acigini otomatik tarar
+#son zamanlarda cikan plesk 0day aciginida otomatik test eder
+#tomcat olan siteyi tespit edip default passlari authentication brute eder.
 #cookie ve proxy destegide vardir.
 #ajax ile veri gonderimi olan dosyalari tespit eder
 #sitede gecen emailleri otomatik toplar
