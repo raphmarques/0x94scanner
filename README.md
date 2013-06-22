@@ -1,7 +1,7 @@
 # 0x94 Scanner v1.0b
 #Python 2x sürümlerde çalışır.
 #mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun
-#Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
+#Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL/XSS/LFI) INJECTION SCANNER"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
 #Sitedeki tum linkleri 2 farkli yontemle alir (ayni linkleri tarayip zaman kaybi yapmaz)
@@ -9,6 +9,7 @@
 #tum linklerde get ve post sql injection dener
 #tum linklerde blind get ve post sql injection dener
 #tum linklerde time based get ve post sql injection dener
+#tum linklerde get ve post xss injection dener
 #tum linklerde header injection dener
 #tum linklerde get ve post basit capli command injection dener
 #sayfada herhangi bir degisme oldugunda degisme satirini ekrana yazar
