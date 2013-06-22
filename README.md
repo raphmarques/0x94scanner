@@ -1,4 +1,6 @@
-# 0x94 Scanner v1.0a [Python 2x]
+# 0x94 Scanner v1.0a 
+#Python 2x sürümlerde çalışır.
+#mysql brute için mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun
 #Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
