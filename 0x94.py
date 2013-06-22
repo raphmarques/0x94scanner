@@ -55,7 +55,15 @@ from time import sleep
 import random
 import os
 import sre
-import MySQLdb
+
+
+try:
+    import MySQLdb
+except ImportError, _:
+    print 'Mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun'
+    sys.exit(1)
+
+
 
 
 # ---------- # AYARLAR BASLANGIC #--------------
