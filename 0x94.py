@@ -59,7 +59,7 @@ import sre
 
 try:
     import MySQLdb
-except ImportError, _:
+except ImportError:
     print 'Mysql eklentisi gerekli onuda https://pypi.python.org/pypi/MySQL-python adresinden kurun'
     sys.exit(1)
 
